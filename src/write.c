@@ -890,12 +890,12 @@ static avifBool avifWriteToneMappedImagePayload(avifRWData * data, const avifGai
     avifRWStream s;
     avifRWStreamStart(&s, data);
     const uint8_t version = 0;
-    AVIF_CHECKRES(avifRWStreamWriteU8(&s, version));
+    AVIF_CHECKRES(avifRWStreamWriteU8(&s, metadata->tmapVersion > 0 ? metadata->tmapVersion : version));
 
     const uint16_t minimumVersion = 0;
-    AVIF_CHECKRES(avifRWStreamWriteU16(&s, minimumVersion));
+    AVIF_CHECKRES(avifRWStreamWriteU16(&s, metadata->minimumVersion > 0 ? metadata->minimumVersion : minimumVersion));
     const uint16_t writerVersion = 0;
-    AVIF_CHECKRES(avifRWStreamWriteU16(&s, writerVersion));
+    AVIF_CHECKRES(avifRWStreamWriteU16(&s, metadata->writerVersion > 0 ? metadata->writerVersion : writerVersion));
 
     uint8_t flags = 0u;
     // Always write three channels for now for simplicity.
@@ -940,6 +940,10 @@ static avifBool avifWriteToneMappedImagePayload(avifRWData * data, const avifGai
         AVIF_CHECKRES(avifRWStreamWriteU32(&s, metadata->baseOffsetD[c]));
         AVIF_CHECKRES(avifRWStreamWriteU32(&s, (uint32_t)metadata->alternateOffsetN[c]));
         AVIF_CHECKRES(avifRWStreamWriteU32(&s, metadata->alternateOffsetD[c]));
+    }
+
+    if (metadata->addExtraBytes) {
+        AVIF_CHECKRES(avifRWStreamWriteU32(&s, 42));
     }
 
     avifRWStreamFinishWrite(&s);
@@ -1596,6 +1600,9 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
                                               uint32_t gridCols,
                                               uint32_t gridRows,
                                               const avifImage * const * cellImages,
+                                              uint32_t gainMapGridCols,
+                                              uint32_t gainMapGridRows,
+                                              const avifImage * const * gainMapCellImages,
                                               uint64_t durationInTimescales,
                                               avifAddImageFlags addImageFlags)
 {
@@ -1703,6 +1710,8 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
             return AVIF_RESULT_INVALID_ARGUMENT;
         }
     }
+#else
+    (void)gainMapGridCols, (void)gainMapGridRows, (void)gainMapCellImages;
 #endif // AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP
 
     // -----------------------------------------------------------------------
@@ -1790,6 +1799,10 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
         if (hasGainMap) {
             AVIF_CHECKRES(avifImageCopyAltImageMetadata(encoder->data->altImageMetadata, encoder->data->imageMetadata));
         }
+        if (gainMapCellImages) {
+            encoder->data->imageMetadata->gainMap->image = avifImageCreateEmpty();
+            AVIF_CHECKRES(avifImageCopy(encoder->data->imageMetadata->gainMap->image, gainMapCellImages[0], 0));
+        }
 #endif
 
         // Prepare all AV1 items
@@ -1836,7 +1849,7 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
         }
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
-        if (firstCell->gainMap && firstCell->gainMap->image) {
+        if ((firstCell->gainMap && firstCell->gainMap->image) || gainMapCellImages) {
             avifEncoderItem * toneMappedItem = avifEncoderDataCreateItem(encoder->data,
                                                                          "tmap",
                                                                          infeNameGainMap,
@@ -1859,14 +1872,16 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
             AVIF_CHECKERR(alternativeItemID != NULL, AVIF_RESULT_OUT_OF_MEMORY);
             *alternativeItemID = colorItemID;
 
-            const uint32_t gainMapGridWidth =
-                avifGridWidth(gridCols, cellImages[0]->gainMap->image, cellImages[gridCols * gridRows - 1]->gainMap->image);
-            const uint32_t gainMapGridHeight =
-                avifGridHeight(gridRows, cellImages[0]->gainMap->image, cellImages[gridCols * gridRows - 1]->gainMap->image);
+            const avifImage * const topLeftGainMapCell = gainMapCellImages ? gainMapCellImages[0] : firstCell->gainMap->image;
+            const avifImage * const bottomRightGainMapCell = gainMapCellImages
+                                                                 ? gainMapCellImages[gainMapGridCols * gainMapGridRows - 1]
+                                                                 : cellImages[gridCols * gridRows - 1]->gainMap->image;
+            const uint32_t gainMapGridWidth = avifGridWidth(gainMapGridCols, topLeftGainMapCell, bottomRightGainMapCell);
+            const uint32_t gainMapGridHeight = avifGridHeight(gainMapGridRows, topLeftGainMapCell, bottomRightGainMapCell);
 
             uint16_t gainMapItemID;
             AVIF_CHECKRES(
-                avifEncoderAddImageItems(encoder, gridCols, gridRows, gainMapGridWidth, gainMapGridHeight, AVIF_ITEM_GAIN_MAP, &gainMapItemID));
+                avifEncoderAddImageItems(encoder, gainMapGridCols, gainMapGridRows, gainMapGridWidth, gainMapGridHeight, AVIF_ITEM_GAIN_MAP, &gainMapItemID));
             avifEncoderItem * gainMapItem = avifEncoderDataFindItemByID(encoder->data, gainMapItemID);
             AVIF_ASSERT_OR_RETURN(gainMapItem);
             gainMapItem->hiddenImage = AVIF_TRUE;
@@ -1970,10 +1985,17 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP)
             if (item->itemCategory == AVIF_ITEM_GAIN_MAP) {
-                AVIF_ASSERT_OR_RETURN(cellImage->gainMap && cellImage->gainMap->image);
-                cellImage = cellImage->gainMap->image;
-                AVIF_ASSERT_OR_RETURN(firstCell->gainMap && firstCell->gainMap->image);
-                firstCellImage = firstCell->gainMap->image;
+                if (gainMapCellImages) {
+                    AVIF_ASSERT_OR_RETURN(gainMapCellImages[item->cellIndex]);
+                    cellImage = gainMapCellImages[item->cellIndex];
+                    AVIF_ASSERT_OR_RETURN(gainMapCellImages[0]);
+                    firstCellImage = gainMapCellImages[0];
+                } else {
+                    AVIF_ASSERT_OR_RETURN(cellImage->gainMap && cellImage->gainMap->image);
+                    cellImage = cellImage->gainMap->image;
+                    AVIF_ASSERT_OR_RETURN(firstCell->gainMap && firstCell->gainMap->image);
+                    firstCellImage = firstCell->gainMap->image;
+                }
             }
 #endif
 
@@ -2077,7 +2099,7 @@ static avifResult avifEncoderAddImageInternal(avifEncoder * encoder,
 avifResult avifEncoderAddImage(avifEncoder * encoder, const avifImage * image, uint64_t durationInTimescales, avifAddImageFlags addImageFlags)
 {
     avifDiagnosticsClearError(&encoder->diag);
-    return avifEncoderAddImageInternal(encoder, 1, 1, &image, durationInTimescales, addImageFlags);
+    return avifEncoderAddImageInternal(encoder, 1, 1, &image, 1, 1, NULL, durationInTimescales, addImageFlags);
 }
 
 avifResult avifEncoderAddImageGrid(avifEncoder * encoder,
@@ -2093,7 +2115,28 @@ avifResult avifEncoderAddImageGrid(avifEncoder * encoder,
     if (encoder->extraLayerCount == 0) {
         addImageFlags |= AVIF_ADD_IMAGE_FLAG_SINGLE; // image grids cannot be image sequences
     }
-    return avifEncoderAddImageInternal(encoder, gridCols, gridRows, cellImages, 1, addImageFlags);
+    const avifResult res =
+        avifEncoderAddImageInternal(encoder, gridCols, gridRows, cellImages, gridCols, gridRows, NULL, 1, addImageFlags);
+    return res;
+}
+
+avifResult avifEncoderAddImageGrid2(avifEncoder * encoder,
+                                    uint32_t gridCols,
+                                    uint32_t gridRows,
+                                    const avifImage * const * cellImages,
+                                    uint32_t gainMapGridCols,
+                                    uint32_t gainMapGridRows,
+                                    const avifImage * const * gainMapCellImages,
+                                    avifAddImageFlags addImageFlags)
+{
+    avifDiagnosticsClearError(&encoder->diag);
+    if ((gridCols == 0) || (gridCols > 256) || (gridRows == 0) || (gridRows > 256)) {
+        return AVIF_RESULT_INVALID_IMAGE_GRID;
+    }
+    if (encoder->extraLayerCount == 0) {
+        addImageFlags |= AVIF_ADD_IMAGE_FLAG_SINGLE; // image grids cannot be image sequences
+    }
+    return avifEncoderAddImageInternal(encoder, gridCols, gridRows, cellImages, gainMapGridCols, gainMapGridRows, gainMapCellImages, 1, addImageFlags);
 }
 
 static size_t avifEncoderFindExistingChunk(avifRWStream * s, size_t mdatStartOffset, const uint8_t * data, size_t size)

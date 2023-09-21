@@ -648,6 +648,15 @@ typedef struct avifGainMapMetadata
     // base image. If false, the color space of the alternate image should
     // be used.
     avifBool useBaseColorSpace;
+
+    // ================
+    // TEMP STUFF: extra fields added just to this git branch to help generate
+    // weird gainmap images for testing
+    // ================
+    uint8_t tmapVersion;     // Value that should be writter for the 'version' field (use default if 0)
+    uint16_t minimumVersion; // Value that should be writter for the 'minimum_version' field (use default if 0)
+    uint16_t writerVersion;  // Value that should be writter for the 'writerVersion' field (use default if 0)
+    avifBool addExtraBytes;  // Add arbitrary bytes at the end
 } avifGainMapMetadata;
 
 // Gain map image and associated metadata.
@@ -1574,6 +1583,14 @@ AVIF_API avifResult avifEncoderAddImageGrid(avifEncoder * encoder,
                                             uint32_t gridRows,
                                             const avifImage * const * cellImages,
                                             avifAddImageFlags addImageFlags);
+AVIF_API avifResult avifEncoderAddImageGrid2(avifEncoder * encoder,
+                                             uint32_t gridCols,
+                                             uint32_t gridRows,
+                                             const avifImage * const * cellImages,
+                                             uint32_t gainMapGridCols,
+                                             uint32_t gainMapGridRows,
+                                             const avifImage * const * gainMapCellImages,
+                                             avifAddImageFlags addImageFlags);
 AVIF_API avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output);
 
 // Codec-specific, optional "advanced" tuning settings, in the form of string key/value pairs,
