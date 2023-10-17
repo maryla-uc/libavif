@@ -13,6 +13,9 @@
 
 #include "avif/avif.h"
 #include "avifutil.h"
+/* copybara:insert(seed dir)
+#include "devtools/build/runtime/get_runfiles_dir.h"
+*/
 #include "fuzztest/fuzztest.h"
 
 namespace libavif {
@@ -192,24 +195,36 @@ std::vector<uint8_t> GetWhiteSinglePixelAvif() {
 
 //------------------------------------------------------------------------------
 
-const char* GetSeedDataDir() { return std::getenv("TEST_DATA_DIR"); }
+std::optional<std::string> GetSeedDataDir() {
+  /* copybara:strip_begin(seed dir) */
+  const char* dir = std::getenv("TEST_DATA_DIR");
+  if (dir == nullptr) {
+    return std::nullopt;
+  }
+  return dir;
+  /* copybara:strip_end_and_replace
+  return devtools_build::GetDataDependencyFilepath(
+      "google3/third_party/libavif/tests/data");
+  */
+}
 
 std::vector<std::string> GetTestImagesContents(
     size_t max_file_size, const std::vector<avifAppFileFormat>& image_formats) {
   // Use an environment variable to get the test data directory because
   // fuzztest seeds are created before the main() function is called, so the
   // test has no chance to parse command line arguments.
-  const char* const test_data_dir = GetSeedDataDir();
-  if (test_data_dir == nullptr) {
+  const std::optional<std::string> test_data_dir = GetSeedDataDir();
+  if (!test_data_dir.has_value()) {
     // Only a warning because this can happen when running the binary with
     // --list_fuzz_tests (such as with gtest_discover_tests() in cmake).
     std::cerr << "WARNING: TEST_DATA_DIR env variable not set, unable to read "
-                 "seed files";
+                 "seed files\n";
     return {};
   }
 
-  std::cout << "Reading seeds from " << test_data_dir << " (non recursively)\n";
-  auto tuple_vector = fuzztest::ReadFilesFromDirectory(test_data_dir);
+  std::cout << "Reading seeds from " << *test_data_dir
+            << " (non recursively)\n";
+  auto tuple_vector = fuzztest::ReadFilesFromDirectory(*test_data_dir);
   std::vector<std::string> seeds;
   seeds.reserve(tuple_vector.size());
   for (auto& [file_content] : tuple_vector) {
@@ -227,7 +242,7 @@ std::vector<std::string> GetTestImagesContents(
     seeds.push_back(std::move(file_content));
   }
   if (seeds.empty()) {
-    std::cerr << "ERROR: no files found in " << test_data_dir
+    std::cerr << "ERROR: no files found in " << *test_data_dir
               << " that match the given file size and format criteria\n";
     std::abort();
   }

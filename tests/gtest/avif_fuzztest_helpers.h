@@ -6,6 +6,7 @@
 
 #include <cstdlib>
 #include <memory>
+#include <optional>
 #include <vector>
 
 #include "avif/avif.h"
@@ -203,16 +204,16 @@ class FuzztestStackLimitEnvironment : public ::testing::Environment {
 // Returns the value of the 'TEST_DATA_DIR' environment variable.
 // Returns nullptr if not set.
 // Tests that use ArbitraryImageWithSeeds() should
-// ASSERT_NE(GetSeedDataDir(), nullptr) if they want to make sure that seeds are
-// actually used.
-const char* GetSeedDataDir();
+// ASSERT_TRUE(GetSeedDataDir().has_value()) if they want to make sure that
+// seeds are actually used.
+std::optional<std::string> GetSeedDataDir();
 
 // Returns a list of test images contents (not paths) from the directory set in
 // the 'TEST_DATA_DIR' environment variable, that are smaller than
 // 'max_file_size' and have one of the formats in 'image_formats' (or any format
 // if 'image_formats' is empty).
 // If TEST_DATA_DIR is not set, returns an empty set.
-// Tests that use this should ASSERT_NE(GetSeedDataDir(), nullptr)
+// Tests that use this should ASSERT_TRUE(GetSeedDataDir().has_value())
 // if they want to make sure that seeds are actually used.
 // Terminates the program with abort() if TEST_DATA_DIR is set but doesn't
 // contain any matching images.
@@ -222,7 +223,7 @@ std::vector<std::string> GetTestImagesContents(
 // Generator for an arbitrary AvifImagePtr that uses test image files as seeds.
 // Uses the 'TEST_DATA_DIR' environment variable to load the seeds.
 // If TEST_DATA_DIR is not set, no seeds are used.
-// Tests that use this should ASSERT_NE(GetSeedDataDir(), nullptr)
+// Tests that use this should ASSERT_TRUE(GetSeedDataDir().has_value())
 // if they want to make sure that seeds are actually used.
 // Terminates the program with abort() if TEST_DATA_DIR is set but doesn't
 // contain any matching images.
