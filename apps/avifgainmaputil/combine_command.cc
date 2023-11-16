@@ -50,6 +50,11 @@ CombineCommand::CombineCommand()
           "Set or override the cicp values for the alternate image, expressed "
           "as P/T/M  where P = color primaries, T = transfer characteristics, "
           "M = matrix coefficients.");
+  argparse_
+      .add_argument(arg_gain_map_matrix_coefficients_,
+                    "--matrix-coeffs-gain-map")
+      .help("Set the CICP matrix coefficients to encode the gain map.")
+      .default_value("6");
   arg_image_encode_.Init(argparse_, /*can_have_alpha=*/true);
   arg_image_read_.Init(argparse_);
 }
@@ -112,6 +117,8 @@ avifResult CombineCommand::Run() {
   if (base_image->gainMap->image == nullptr) {
     return AVIF_RESULT_OUT_OF_MEMORY;
   }
+  base_image->gainMap->image->matrixCoefficients =
+      arg_gain_map_matrix_coefficients_;
   avifDiagnostics diag;
   result = avifImageComputeGainMap(base_image.get(), alternate_image.get(),
                                    base_image->gainMap, &diag);

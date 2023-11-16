@@ -42,6 +42,9 @@ avifResult ChangeBase(avifImage& image, avifImage* swapped) {
     swapped->transferCharacteristics = transfer_characteristics;
     swapped->matrixCoefficients = image.matrixCoefficients;
   }
+  // Do not change the matrixCoefficients field as that defines how the gain
+  // map's pixels are converted between YUV and RGB and cannot be changed
+  // without converting the gain map.
 
   avifRGBImage swapped_rgb;
   avifRGBImageSetDefaults(&swapped_rgb, swapped);

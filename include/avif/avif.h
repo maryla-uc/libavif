@@ -1539,6 +1539,10 @@ AVIF_API avifResult avifRGBImageApplyGainMap(const avifRGBImage * baseImage,
 // gainMap->image should be initialized with avifImageCreate(), with the width,
 // height, depth and yuvFormat fields set to the desired output values for the
 // gain map. All of these fields may differ from the source images.
+// gainMap->image->matrixCoefficients should also be set by the caller to control
+// how the gain map image will is converted to YUV.
+// Moreover, the caller may populate gainMap.image->clli with the alternate
+// image's clli information if needed (if the alternate image is HDR).
 AVIF_API avifResult avifRGBImageComputeGainMap(const avifRGBImage * baseRgbImage,
                                                avifTransferCharacteristics baseTransferCharacteristics,
                                                const avifRGBImage * altRgbImage,
@@ -1549,6 +1553,7 @@ AVIF_API avifResult avifRGBImageComputeGainMap(const avifRGBImage * baseRgbImage
 // Convenience function. Same as above but takes avifImage images as input
 // instead of avifRGBImage. Gain map computation is performed in RGB space so
 // the images are converted to RGB first.
+// Copies the alternate image's clli information to gainMap->image->clli.
 AVIF_API avifResult avifImageComputeGainMap(const avifImage * baseImage,
                                             const avifImage * altImage,
                                             avifGainMap * gainMap,

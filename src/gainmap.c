@@ -539,6 +539,10 @@ avifResult avifRGBImageComputeGainMap(const avifRGBImage * baseRgbImage,
         }
     }
 
+    gainMapImage->colorPrimaries = colorPrimaries;
+    gainMapImage->transferCharacteristics = altTransferCharacteristics;
+    // Do not set the matrixCoefficients. The caller can set it if they with to control it.
+
     res = avifImageRGBToYUV(gainMapImage, &gainMapRGB);
     if (res != AVIF_RESULT_OK) {
         goto cleanup;
@@ -617,6 +621,11 @@ avifResult avifImageComputeGainMap(const avifImage * baseImage, const avifImage 
                                      baseImage->colorPrimaries,
                                      gainMap,
                                      diag);
+    if (res != AVIF_RESULT_OK) {
+        goto cleanup;
+    }
+
+    gainMap->image->clli = altImage->clli;
 
 cleanup:
     avifRGBImageFreePixels(&baseImageRgb);
