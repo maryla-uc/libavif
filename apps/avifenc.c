@@ -246,6 +246,8 @@ static void syntaxLong(void)
            AVIF_QUALITY_WORST,
            AVIF_QUALITY_BEST,
            AVIF_QUALITY_LOSSLESS);
+    printf("    --icc-alt FILENAME                : Provide an ICC profile payload to be associated with the alternage image\n");
+    printf("    --no-use-base-colorspace          : Provide an ICC profile payload to be associated with the alternage image\n");
     // TODO(maryla): add quality setting for the gain map.
 #endif
     printf("    --pasp H,V                        : Add pasp property (aspect ratio). H=horizontal spacing, V=vertical spacing\n");
@@ -1420,6 +1422,7 @@ int main(int argc, char * argv[])
     avifRWData exifOverride = AVIF_DATA_EMPTY;
     avifRWData xmpOverride = AVIF_DATA_EMPTY;
     avifRWData iccOverride = AVIF_DATA_EMPTY;
+    avifRWData altICCOverride = AVIF_DATA_EMPTY;
     avifBool premultiplyAlpha = AVIF_FALSE;
     uint32_t gridCellCount = 0;
     avifImage ** gridCells = NULL;
@@ -1433,6 +1436,8 @@ int main(int argc, char * argv[])
     settings.transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED;
     settings.matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT601;
     settings.chromaDownsampling = AVIF_CHROMA_DOWNSAMPLING_AUTOMATIC;
+
+    avifBool useBaseColorSpace = AVIF_TRUE;
 
     int argIndex = 1;
     while (argIndex < argc) {
@@ -1828,6 +1833,14 @@ int main(int argc, char * argv[])
             }
             settings.qualityGainMap = qualityGainMap;
             settings.qualityGainMapIsConstrained = AVIF_TRUE;
+        } else if (!strcmp(arg, "--icc-alt")) {
+            NEXTARG();
+            if (!avifReadEntireFile(arg, &altICCOverride)) {
+                fprintf(stderr, "ERROR: Unable to read alt ICC profile: %s\n", arg);
+                goto cleanup;
+            }
+        } else if (!strcmp(arg, "--no-use-base-colorspace")) {
+            useBaseColorSpace = AVIF_FALSE;
 #endif
         } else if (!strcmp(arg, "--pasp")) {
             NEXTARG();
@@ -2254,6 +2267,12 @@ int main(int argc, char * argv[])
     }
 
 #if defined(AVIF_ENABLE_EXPERIMENTAL_JPEG_GAIN_MAP_CONVERSION)
+    if (image->gainMap) {
+        if (altICCOverride.size) {
+            avifRWDataSet(&image->gainMap->altICC, altICCOverride.data, altICCOverride.size);
+        }
+        image->gainMap->metadata.useBaseColorSpace = useBaseColorSpace;
+    }
     if (image->gainMap && !image->gainMap->altICC.size) {
         if (image->gainMap->altColorPrimaries == AVIF_COLOR_PRIMARIES_UNSPECIFIED) {
             // Assume the alternate image has the same primaries as the base image.
