@@ -2128,7 +2128,7 @@ static avifResult avifEncoderWriteMediaDataBox(avifEncoder * encoder,
     encoder->data->gainMapSizeBytes = 0;
 
     avifBoxMarker mdat;
-    AVIF_CHECKRES(avifRWStreamWriteBox(s, "mdat", AVIF_BOX_SIZE_TBD, &mdat));
+    AVIF_CHECKRES(avifRWStreamWriteBox(s, "idat", AVIF_BOX_SIZE_TBD, &mdat));
     const size_t mdatStartOffset = avifRWStreamOffset(s);
     for (uint32_t itemPasses = 0; itemPasses < 3; ++itemPasses) {
         // Use multiple passes to pack in the following order:
@@ -2218,7 +2218,7 @@ static avifResult avifEncoderWriteMediaDataBox(avifEncoder * encoder,
                 avifOffsetFixup * fixup = &item->mdatFixups.fixup[fixupIndex];
                 size_t prevOffset = avifRWStreamOffset(s);
                 avifRWStreamSetOffset(s, fixup->offset);
-                AVIF_CHECKRES(avifRWStreamWriteU32(s, (uint32_t)chunkOffset));
+                AVIF_CHECKRES(avifRWStreamWriteU32(s, (uint32_t)(chunkOffset - mdatStartOffset)));
                 avifRWStreamSetOffset(s, prevOffset);
             }
         }
@@ -2265,7 +2265,7 @@ static avifResult avifEncoderWriteMediaDataBox(avifEncoder * encoder,
 
                     size_t prevOffset = avifRWStreamOffset(s);
                     avifRWStreamSetOffset(s, item->mdatFixups.fixup[layerIndex].offset);
-                    AVIF_CHECKRES(avifRWStreamWriteU32(s, (uint32_t)chunkOffset));
+                    AVIF_CHECKRES(avifRWStreamWriteU32(s, (uint32_t)(chunkOffset - mdatStartOffset)));
                     avifRWStreamSetOffset(s, prevOffset);
                 }
             }
@@ -3115,16 +3115,20 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
     // Write iloc
 
     avifBoxMarker iloc;
-    AVIF_CHECKRES(avifRWStreamWriteFullBox(&s, "iloc", AVIF_BOX_SIZE_TBD, 0, 0, &iloc));
+    AVIF_CHECKRES(avifRWStreamWriteFullBox(&s, "iloc", AVIF_BOX_SIZE_TBD, 1, 0, &iloc));
     AVIF_CHECKRES(avifRWStreamWriteBits(&s, 4, /*bitCount=*/4));                   // unsigned int(4) offset_size;
     AVIF_CHECKRES(avifRWStreamWriteBits(&s, 4, /*bitCount=*/4));                   // unsigned int(4) length_size;
     AVIF_CHECKRES(avifRWStreamWriteBits(&s, 0, /*bitCount=*/4));                   // unsigned int(4) base_offset_size;
-    AVIF_CHECKRES(avifRWStreamWriteBits(&s, 0, /*bitCount=*/4));                   // unsigned int(4) reserved;
+    AVIF_CHECKRES(avifRWStreamWriteBits(&s, 0, /*bitCount=*/4));                   // unsigned int(4) index_size;
     AVIF_CHECKRES(avifRWStreamWriteU16(&s, (uint16_t)encoder->data->items.count)); // unsigned int(16) item_count;
 
     for (uint32_t itemIndex = 0; itemIndex < encoder->data->items.count; ++itemIndex) {
         avifEncoderItem * item = &encoder->data->items.item[itemIndex];
         AVIF_CHECKRES(avifRWStreamWriteU16(&s, item->id)); // unsigned int(16) item_ID;
+
+        AVIF_CHECKRES(avifRWStreamWriteBits(&s, 0, /*bitCount=*/12));                  // unsigned int(12) reserved;
+        AVIF_CHECKRES(avifRWStreamWriteBits(&s, 1 /* idat_offset */, /*bitCount=*/4)); // unsigned int(4) construction_method;
+
         AVIF_CHECKRES(avifRWStreamWriteU16(&s, 0));        // unsigned int(16) data_reference_index;
 
         // Layered Image, write location for all samples
@@ -3132,6 +3136,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             uint32_t layerCount = item->extraLayerCount + 1;
             AVIF_CHECKRES(avifRWStreamWriteU16(&s, (uint16_t)layerCount)); // unsigned int(16) extent_count;
             for (uint32_t i = 0; i < layerCount; ++i) {
+                // AVIF_CHECKRES(avifRWStreamWriteU8(&s, (uint8_t)0)); // unsigned int(16) item_reference_index;
                 AVIF_CHECKRES(avifEncoderItemAddMdatFixup(item, &s));
                 AVIF_CHECKRES(avifRWStreamWriteU32(&s, 0 /* set later */)); // unsigned int(offset_size*8) extent_offset;
                 AVIF_CHECKRES(avifRWStreamWriteU32(&s, (uint32_t)item->encodeOutput->samples.sample[i].data.size)); // unsigned int(length_size*8) extent_length;
@@ -3153,6 +3158,7 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
         }
 
         AVIF_CHECKRES(avifRWStreamWriteU16(&s, 1));                     // unsigned int(16) extent_count;
+        // AVIF_CHECKRES(avifRWStreamWriteU8(&s, (uint8_t)0)); // unsigned int(16) item_reference_index;
         AVIF_CHECKRES(avifEncoderItemAddMdatFixup(item, &s));           //
         AVIF_CHECKRES(avifRWStreamWriteU32(&s, 0 /* set later */));     // unsigned int(offset_size*8) extent_offset;
         AVIF_CHECKRES(avifRWStreamWriteU32(&s, (uint32_t)contentSize)); // unsigned int(length_size*8) extent_length;
@@ -3305,9 +3311,29 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
     }
 
     // -----------------------------------------------------------------------
+    // Write idat box
+
+    avifEncoderItemReferenceArray layeredColorItems;
+    avifEncoderItemReferenceArray layeredAlphaItems;
+    if (!avifArrayCreate(&layeredColorItems, sizeof(avifEncoderItemReference), 1)) {
+        result = AVIF_RESULT_OUT_OF_MEMORY;
+    }
+    if (!avifArrayCreate(&layeredAlphaItems, sizeof(avifEncoderItemReference), 1)) {
+        result = AVIF_RESULT_OUT_OF_MEMORY;
+    }
+    if (result == AVIF_RESULT_OK) {
+        result = avifEncoderWriteMediaDataBox(encoder, &s, &layeredColorItems, &layeredAlphaItems);
+    }
+    avifArrayDestroy(&layeredColorItems);
+    avifArrayDestroy(&layeredAlphaItems);
+    AVIF_CHECKRES(result);
+
+    // -----------------------------------------------------------------------
     // Finish meta box
 
     avifRWStreamFinishBox(&s, meta);
+    // uncomment to make meta size zero
+    // memset(s.raw->data + meta, 0, sizeof(uint32_t));
 
     // -----------------------------------------------------------------------
     // Write tracks (if an image sequence)
@@ -3603,24 +3629,6 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
 
         avifRWStreamFinishBox(&s, moov);
     }
-
-    // -----------------------------------------------------------------------
-    // Write mdat
-
-    avifEncoderItemReferenceArray layeredColorItems;
-    avifEncoderItemReferenceArray layeredAlphaItems;
-    if (!avifArrayCreate(&layeredColorItems, sizeof(avifEncoderItemReference), 1)) {
-        result = AVIF_RESULT_OUT_OF_MEMORY;
-    }
-    if (!avifArrayCreate(&layeredAlphaItems, sizeof(avifEncoderItemReference), 1)) {
-        result = AVIF_RESULT_OUT_OF_MEMORY;
-    }
-    if (result == AVIF_RESULT_OK) {
-        result = avifEncoderWriteMediaDataBox(encoder, &s, &layeredColorItems, &layeredAlphaItems);
-    }
-    avifArrayDestroy(&layeredColorItems);
-    avifArrayDestroy(&layeredAlphaItems);
-    AVIF_CHECKRES(result);
 
     // -----------------------------------------------------------------------
     // Finish up stream
