@@ -169,6 +169,11 @@ void FillImageGradient(avifImage* image) {
                   (x + y) * (limitedRangeMax - limitedRangeMin) /
                       std::max(1u, plane_width + plane_height - 2);
         }
+        if ((value >= (1u << image->depth)) || (image->yuvRange == AVIF_RANGE_LIMITED && c != AVIF_CHAN_A && value > limitedRangeMax)) {
+          printf("????? %d\n", value);
+          int* p = NULL;
+          *p = 0;
+        }
         if (avifImageUsesU16(image)) {
           reinterpret_cast<uint16_t*>(row)[x] = static_cast<uint16_t>(value);
         } else {
