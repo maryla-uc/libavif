@@ -142,14 +142,16 @@ option(
     "Build tests that compare encoding outputs to golden files. Needs AVIF_BUILD_APPS=ON and AVIF_BUILD_TESTS=ON, and depends on MP4box which can be built with ext/mp4box.sh"
     OFF
 )
-option(AVIF_ENABLE_FUZZTEST "Build avif fuzztest targets. Requires Google FuzzTest. Has no effect unless AVIF_BUILD_TESTS is ON."
-       OFF
+set_local_or_system_option(
+    "FUZZTEST" OFF
+    "Use the Google FuzzTest framework. Enables fuzzing tests. Has no effect unless AVIF_BUILD_TESTS is ON."
 )
-option(
-    AVIF_LOCAL_FUZZTEST
-    "Build the Google FuzzTest framework by providing your own copy of the repo in ext/fuzztest (see Local Builds in README). CMake must be at least 3.25."
-    OFF
-)
+if(AVIF_FUZZTEST STREQUAL "SYSTEM")
+    message(
+        FATAL_ERROR
+            "fuzztest: Installed FuzzTest is not supported, please set AVIF_FUZZTEST=LOCAL or AVIF_FUZZTEST=OFF"
+    )
+endif()
 
 # Whether the libavif library uses c++ indirectly (e.g. through linking to libyuv).
 set(AVIF_LIB_USE_CXX OFF)
@@ -570,7 +572,7 @@ if(NOT AVIF_CODEC_AOM_ENABLED
     message(WARNING "libavif: No decoding library is enabled.")
 endif()
 
-if(AVIF_LIB_USE_CXX OR AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND (AVIF_ENABLE_FUZZTEST OR AVIF_GTEST)))
+if(AVIF_LIB_USE_CXX OR AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND (AVIF_FUZZTEST OR AVIF_GTEST)))
     enable_language(CXX)
     if(AVIF_ENABLE_NODISCARD)
         # [[nodiscard]] requires C++17.
@@ -647,7 +649,7 @@ if(NOT SKIP_INSTALL_ALL)
     include(GNUInstallDirs)
 endif()
 
-if(AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND (AVIF_ENABLE_FUZZTEST OR AVIF_GTEST)))
+if(AVIF_BUILD_APPS OR (AVIF_BUILD_TESTS AND (AVIF_FUZZTEST OR AVIF_GTEST)))
     if(AVIF_ZLIBPNG STREQUAL "OFF")
         message(FATAL_ERROR "libavif: AVIF_ZLIBPNG cannot be OFF when AVIF_BUILD_APPS or AVIF_BUILD_TESTS is ON")
     elseif(AVIF_ZLIBPNG STREQUAL "SYSTEM")

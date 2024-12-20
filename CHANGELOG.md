@@ -41,6 +41,8 @@ The changes are relative to the previous release, unless the baseline is specifi
   AVIF_ENABLE_EXPERIMENTAL_GAIN_MAP compile flag.
 * Remove AVIF_ENABLE_GTEST CMake option. It's now implied by
   AVIF_GTEST=LOCAL/SYSTEM.
+* Remove AVIF_ENABLE_FUZZTEST Cmake option. Change AVIF_LOCAL_FUZZTEST
+  to AVIF_FUZZTEST=LOCAL, which now implies enabling the fuzzing tests.
 
 ## [1.1.1] - 2024-07-30
 
