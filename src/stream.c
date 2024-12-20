@@ -245,22 +245,22 @@ avifBool avifROStreamReadString(avifROStream * stream, char * output, size_t out
     return AVIF_TRUE;
 }
 
-avifBool avifROStreamReadBoxHeaderPartial(avifROStream * stream, avifBoxHeader * header, avifBool topLevel)
+avifResult avifROStreamReadBoxHeaderPartial(avifROStream * stream, avifBoxHeader * header, avifBool topLevel)
 {
     // Section 4.2.2 of ISO/IEC 14496-12.
     size_t startOffset = stream->offset;
 
     uint32_t smallSize;
-    AVIF_CHECK(avifROStreamReadU32(stream, &smallSize));   // unsigned int(32) size;
-    AVIF_CHECK(avifROStreamRead(stream, header->type, 4)); // unsigned int(32) type = boxtype;
+    AVIF_CHECKERR(avifROStreamReadU32(stream, &smallSize), AVIF_RESULT_TRUNCATED_DATA);   // unsigned int(32) size;
+    AVIF_CHECKERR(avifROStreamRead(stream, header->type, 4), AVIF_RESULT_TRUNCATED_DATA); // unsigned int(32) type = boxtype;
 
     uint64_t size = smallSize;
     if (size == 1) {
-        AVIF_CHECK(avifROStreamReadU64(stream, &size)); // unsigned int(64) largesize;
+        AVIF_CHECKERR(avifROStreamReadU64(stream, &size), AVIF_RESULT_TRUNCATED_DATA); // unsigned int(64) largesize;
     }
 
     if (!memcmp(header->type, "uuid", 4)) {
-        AVIF_CHECK(avifROStreamRead(stream, header->usertype, 16)); // unsigned int(8) usertype[16] = extended_type;
+        AVIF_CHECKERR(avifROStreamRead(stream, header->usertype, 16), AVIF_RESULT_TRUNCATED_DATA); // unsigned int(8) usertype[16] = extended_type;
     } else {
         memset(header->usertype, 0, sizeof(header->usertype));
     }
@@ -273,7 +273,7 @@ avifBool avifROStreamReadBoxHeaderPartial(avifROStream * stream, avifBoxHeader *
         //   enclosing 'file'. This is normally only used for a MediaDataBox ('mdat').
         if (!topLevel) {
             avifDiagnosticsPrintf(stream->diag, "%s: Non-top-level box with size 0", stream->diagContext);
-            return AVIF_FALSE;
+            return AVIF_RESULT_BMFF_PARSE_FAILED;
         }
 
         // The given stream may be incomplete and there is no guarantee that sizeHint is available and accurate.
@@ -282,26 +282,26 @@ avifBool avifROStreamReadBoxHeaderPartial(avifROStream * stream, avifBoxHeader *
         // Wait for avifIOReadFunc() to return AVIF_RESULT_OK.
         header->isSizeZeroBox = AVIF_TRUE;
         header->size = 0;
-        return AVIF_TRUE;
+        return AVIF_RESULT_OK;
     }
 
     if ((size < bytesRead) || ((size - bytesRead) > SIZE_MAX)) {
         avifDiagnosticsPrintf(stream->diag, "%s: Header size overflow check failure", stream->diagContext);
-        return AVIF_FALSE;
+        return AVIF_RESULT_BMFF_PARSE_FAILED;
     }
     header->isSizeZeroBox = AVIF_FALSE;
     header->size = (size_t)(size - bytesRead);
-    return AVIF_TRUE;
+    return AVIF_RESULT_OK;
 }
 
-avifBool avifROStreamReadBoxHeader(avifROStream * stream, avifBoxHeader * header)
+avifResult avifROStreamReadBoxHeader(avifROStream * stream, avifBoxHeader * header)
 {
-    AVIF_CHECK(avifROStreamReadBoxHeaderPartial(stream, header, /*topLevel=*/AVIF_FALSE));
+    AVIF_CHECKRES(avifROStreamReadBoxHeaderPartial(stream, header, /*topLevel=*/AVIF_FALSE));
     if (header->size > avifROStreamRemainingBytes(stream)) {
         avifDiagnosticsPrintf(stream->diag, "%s: Child box too large, possibly truncated data", stream->diagContext);
-        return AVIF_FALSE;
+        return AVIF_RESULT_TRUNCATED_DATA;
     }
-    return AVIF_TRUE;
+    return AVIF_RESULT_OK;
 }
 
 avifBool avifROStreamReadVersionAndFlags(avifROStream * stream, uint8_t * version, uint32_t * flags)

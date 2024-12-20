@@ -522,7 +522,7 @@ static avifResult avifCodecDecodeInputFillFromSampleTable(avifCodecDecodeInput *
             }
             if (sizeHint && ((sampleOffset + sampleSize) > sizeHint)) {
                 avifDiagnosticsPrintf(diag, "Exceeded avifIO's sizeHint, possibly truncated data");
-                return AVIF_RESULT_BMFF_PARSE_FAILED;
+                return AVIF_RESULT_TRUNCATED_DATA;
             }
 
             sampleOffset += sampleSize;
@@ -554,7 +554,7 @@ static avifResult avifCodecDecodeInputFillFromDecoderItem(avifCodecDecodeInput *
 {
     if (sizeHint && (item->size > sizeHint)) {
         avifDiagnosticsPrintf(diag, "Exceeded avifIO's sizeHint, possibly truncated data");
-        return AVIF_RESULT_BMFF_PARSE_FAILED;
+        return AVIF_RESULT_TRUNCATED_DATA;
     }
 
     uint8_t layerCount = 0;
@@ -1390,7 +1390,7 @@ static avifResult avifDecoderItemRead(avifDecoderItem * item,
 
             if ((io->sizeHint > 0) && (extent->offset > io->sizeHint)) {
                 avifDiagnosticsPrintf(diag, "Item ID %u extent offset failed size hint sanity check. Truncated data?", item->id);
-                return AVIF_RESULT_BMFF_PARSE_FAILED;
+                return AVIF_RESULT_TRUNCATED_DATA;
             }
             avifResult readResult = io->read(io, 0, extent->offset, bytesToRead, &offsetBuffer);
             if (readResult != AVIF_RESULT_OK) {
@@ -2624,7 +2624,7 @@ static avifResult avifParseItemPropertyContainerBox(avifPropertyArray * properti
 
     while (avifROStreamHasBytesLeft(&s, 1)) {
         avifBoxHeader header;
-        AVIF_CHECKERR(avifROStreamReadBoxHeader(&s, &header), AVIF_RESULT_BMFF_PARSE_FAILED);
+        AVIF_CHECKRES(avifROStreamReadBoxHeader(&s, &header));
 
         avifProperty * prop = (avifProperty *)avifArrayPush(properties);
         AVIF_CHECKERR(prop != NULL, AVIF_RESULT_OUT_OF_MEMORY);
@@ -2676,7 +2676,7 @@ static avifResult avifParseItemPropertyContainerBox(avifPropertyArray * properti
             AVIF_CHECKRES(avifRWDataSet(&prop->u.opaque.boxPayload, avifROStreamCurrent(&s), header.size));
         }
 
-        AVIF_CHECKERR(avifROStreamSkip(&s, header.size), AVIF_RESULT_BMFF_PARSE_FAILED);
+        AVIF_CHECKERR(avifROStreamSkip(&s, header.size), AVIF_RESULT_TRUNCATED_DATA);
     }
     return AVIF_RESULT_OK;
 }
@@ -2726,7 +2726,7 @@ static avifResult avifParseItemPropertyAssociation(avifMeta * meta, const uint8_
         item->ipmaSeen = AVIF_TRUE;
 
         uint8_t associationCount;
-        AVIF_CHECKERR(avifROStreamRead(&s, &associationCount, 1), AVIF_RESULT_BMFF_PARSE_FAILED);
+        AVIF_CHECKERR(avifROStreamRead(&s, &associationCount, 1), AVIF_RESULT_TRUNCATED_DATA);
         for (uint8_t associationIndex = 0; associationIndex < associationCount; ++associationIndex) {
             uint8_t essential;
             AVIF_CHECKERR(avifROStreamReadBitsU8(&s, &essential, /*bitCount=*/1), AVIF_RESULT_BMFF_PARSE_FAILED); // bit(1) essential;
@@ -2872,7 +2872,7 @@ static avifResult avifParseItemPropertiesBox(avifMeta * meta, uint64_t rawOffset
     BEGIN_STREAM(s, raw, rawLen, diag, "Box[iprp]");
 
     avifBoxHeader ipcoHeader;
-    AVIF_CHECKERR(avifROStreamReadBoxHeader(&s, &ipcoHeader), AVIF_RESULT_BMFF_PARSE_FAILED);
+    AVIF_CHECKRES(avifROStreamReadBoxHeader(&s, &ipcoHeader));
     if (memcmp(ipcoHeader.type, "ipco", 4)) {
         avifDiagnosticsPrintf(diag, "Failed to find Box[ipco] as the first box in Box[iprp]");
         return AVIF_RESULT_BMFF_PARSE_FAILED;
@@ -2884,7 +2884,7 @@ static avifResult avifParseItemPropertiesBox(avifMeta * meta, uint64_t rawOffset
                                                     avifROStreamCurrent(&s),
                                                     ipcoHeader.size,
                                                     diag));
-    AVIF_CHECKERR(avifROStreamSkip(&s, ipcoHeader.size), AVIF_RESULT_BMFF_PARSE_FAILED);
+    AVIF_CHECKERR(avifROStreamSkip(&s, ipcoHeader.size), AVIF_RESULT_TRUNCATED_DATA);
 
     uint32_t versionAndFlagsSeen[MAX_IPMA_VERSION_AND_FLAGS_SEEN];
     uint32_t versionAndFlagsSeenCount = 0;
@@ -2892,7 +2892,7 @@ static avifResult avifParseItemPropertiesBox(avifMeta * meta, uint64_t rawOffset
     // Now read all ItemPropertyAssociation until the end of the box, and make associations
     while (avifROStreamHasBytesLeft(&s, 1)) {
         avifBoxHeader ipmaHeader;
-        AVIF_CHECKERR(avifROStreamReadBoxHeader(&s, &ipmaHeader), AVIF_RESULT_BMFF_PARSE_FAILED);
+        AVIF_CHECKRES(avifROStreamReadBoxHeader(&s, &ipmaHeader));
 
         if (!memcmp(ipmaHeader.type, "ipma", 4)) {
             uint32_t versionAndFlags;
@@ -2918,7 +2918,7 @@ static avifResult avifParseItemPropertiesBox(avifMeta * meta, uint64_t rawOffset
             return AVIF_RESULT_BMFF_PARSE_FAILED;
         }
 
-        AVIF_CHECKERR(avifROStreamSkip(&s, ipmaHeader.size), AVIF_RESULT_BMFF_PARSE_FAILED);
+        AVIF_CHECKERR(avifROStreamSkip(&s, ipmaHeader.size), AVIF_RESULT_TRUNCATED_DATA);
     }
     return AVIF_RESULT_OK;
 }
@@ -2961,7 +2961,7 @@ static avifResult avifParseItemInfoEntry(avifMeta * meta, const uint8_t * raw, s
     uint16_t itemProtectionIndex;
     AVIF_CHECKERR(avifROStreamReadU16(&s, &itemProtectionIndex), AVIF_RESULT_BMFF_PARSE_FAILED); // unsigned int(16) item_protection_index;
     uint8_t itemType[4];
-    AVIF_CHECKERR(avifROStreamRead(&s, itemType, 4), AVIF_RESULT_BMFF_PARSE_FAILED);   // unsigned int(32) item_type;
+    AVIF_CHECKERR(avifROStreamRead(&s, itemType, 4), AVIF_RESULT_TRUNCATED_DATA);      // unsigned int(32) item_type;
     AVIF_CHECKERR(avifROStreamReadString(&s, NULL, 0), AVIF_RESULT_BMFF_PARSE_FAILED); // utf8string item_name; (skipped)
     avifContentType contentType;
     if (!memcmp(itemType, "mime", 4)) {
@@ -3002,7 +3002,7 @@ static avifResult avifParseItemInfoBox(avifMeta * meta, const uint8_t * raw, siz
 
     for (uint32_t entryIndex = 0; entryIndex < entryCount; ++entryIndex) {
         avifBoxHeader infeHeader;
-        AVIF_CHECKERR(avifROStreamReadBoxHeader(&s, &infeHeader), AVIF_RESULT_BMFF_PARSE_FAILED);
+        AVIF_CHECKRES(avifROStreamReadBoxHeader(&s, &infeHeader));
 
         if (!memcmp(infeHeader.type, "infe", 4)) {
             AVIF_CHECKRES(avifParseItemInfoEntry(meta, avifROStreamCurrent(&s), infeHeader.size, diag));
@@ -3012,7 +3012,7 @@ static avifResult avifParseItemInfoBox(avifMeta * meta, const uint8_t * raw, siz
             return AVIF_RESULT_BMFF_PARSE_FAILED;
         }
 
-        AVIF_CHECKERR(avifROStreamSkip(&s, infeHeader.size), AVIF_RESULT_BMFF_PARSE_FAILED);
+        AVIF_CHECKERR(avifROStreamSkip(&s, infeHeader.size), AVIF_RESULT_TRUNCATED_DATA);
     }
 
     return AVIF_RESULT_OK;
@@ -3031,7 +3031,7 @@ static avifResult avifParseItemReferenceBox(avifMeta * meta, const uint8_t * raw
 
     while (avifROStreamHasBytesLeft(&s, 1)) {
         avifBoxHeader irefHeader;
-        AVIF_CHECKERR(avifROStreamReadBoxHeader(&s, &irefHeader), AVIF_RESULT_BMFF_PARSE_FAILED);
+        AVIF_CHECKRES(avifROStreamReadBoxHeader(&s, &irefHeader));
 
         uint32_t fromID = 0;
         if (version == 0) {
@@ -3120,7 +3120,7 @@ static avifResult avifParseMetaBox(avifMeta * meta, uint64_t rawOffset, const ui
     uint32_t uniqueBoxFlags = 0;
     while (avifROStreamHasBytesLeft(&s, 1)) {
         avifBoxHeader header;
-        AVIF_CHECKERR(avifROStreamReadBoxHeader(&s, &header), AVIF_RESULT_BMFF_PARSE_FAILED);
+        AVIF_CHECKRES(avifROStreamReadBoxHeader(&s, &header));
 
         if (firstBox) {
             if (!memcmp(header.type, "hdlr", 4)) {
@@ -3154,7 +3154,7 @@ static avifResult avifParseMetaBox(avifMeta * meta, uint64_t rawOffset, const ui
             AVIF_CHECKRES(avifParseItemReferenceBox(meta, avifROStreamCurrent(&s), header.size, diag));
         }
 
-        AVIF_CHECKERR(avifROStreamSkip(&s, header.size), AVIF_RESULT_BMFF_PARSE_FAILED);
+        AVIF_CHECKERR(avifROStreamSkip(&s, header.size), AVIF_RESULT_TRUNCATED_DATA);
     }
     if (firstBox) {
         // The meta box must not be empty (it must contain at least a hdlr box)
@@ -3400,7 +3400,7 @@ static avifResult avifParseSampleDescriptionBox(avifSampleTable * sampleTable,
 
     for (uint32_t i = 0; i < entryCount; ++i) {
         avifBoxHeader sampleEntryHeader;
-        AVIF_CHECKERR(avifROStreamReadBoxHeader(&s, &sampleEntryHeader), AVIF_RESULT_BMFF_PARSE_FAILED);
+        AVIF_CHECKRES(avifROStreamReadBoxHeader(&s, &sampleEntryHeader));
 
         avifSampleDescription * description = (avifSampleDescription *)avifArrayPush(&sampleTable->sampleDescriptions);
         AVIF_CHECKERR(description != NULL, AVIF_RESULT_OUT_OF_MEMORY);
@@ -3422,7 +3422,7 @@ static avifResult avifParseSampleDescriptionBox(avifSampleTable * sampleTable,
                                                             diag));
         }
 
-        AVIF_CHECKERR(avifROStreamSkip(&s, sampleEntryBytes), AVIF_RESULT_BMFF_PARSE_FAILED);
+        AVIF_CHECKERR(avifROStreamSkip(&s, sampleEntryBytes), AVIF_RESULT_TRUNCATED_DATA);
     }
     return AVIF_RESULT_OK;
 }
@@ -3441,7 +3441,7 @@ static avifResult avifParseSampleTableBox(avifTrack * track, uint64_t rawOffset,
 
     while (avifROStreamHasBytesLeft(&s, 1)) {
         avifBoxHeader header;
-        AVIF_CHECKERR(avifROStreamReadBoxHeader(&s, &header), AVIF_RESULT_BMFF_PARSE_FAILED);
+        AVIF_CHECKRES(avifROStreamReadBoxHeader(&s, &header));
 
         if (!memcmp(header.type, "stco", 4)) {
             AVIF_CHECKRES(avifParseChunkOffsetBox(track->sampleTable, AVIF_FALSE, avifROStreamCurrent(&s), header.size, diag));
@@ -3463,7 +3463,7 @@ static avifResult avifParseSampleTableBox(avifTrack * track, uint64_t rawOffset,
                                                         diag));
         }
 
-        AVIF_CHECKERR(avifROStreamSkip(&s, header.size), AVIF_RESULT_BMFF_PARSE_FAILED);
+        AVIF_CHECKERR(avifROStreamSkip(&s, header.size), AVIF_RESULT_TRUNCATED_DATA);
     }
     return AVIF_RESULT_OK;
 }
@@ -3474,13 +3474,13 @@ static avifResult avifParseMediaInformationBox(avifTrack * track, uint64_t rawOf
 
     while (avifROStreamHasBytesLeft(&s, 1)) {
         avifBoxHeader header;
-        AVIF_CHECKERR(avifROStreamReadBoxHeader(&s, &header), AVIF_RESULT_BMFF_PARSE_FAILED);
+        AVIF_CHECKRES(avifROStreamReadBoxHeader(&s, &header));
 
         if (!memcmp(header.type, "stbl", 4)) {
             AVIF_CHECKRES(avifParseSampleTableBox(track, rawOffset + avifROStreamOffset(&s), avifROStreamCurrent(&s), header.size, diag));
         }
 
-        AVIF_CHECKERR(avifROStreamSkip(&s, header.size), AVIF_RESULT_BMFF_PARSE_FAILED);
+        AVIF_CHECKERR(avifROStreamSkip(&s, header.size), AVIF_RESULT_TRUNCATED_DATA);
     }
     return AVIF_RESULT_OK;
 }
@@ -3491,7 +3491,7 @@ static avifResult avifParseMediaBox(avifTrack * track, uint64_t rawOffset, const
 
     while (avifROStreamHasBytesLeft(&s, 1)) {
         avifBoxHeader header;
-        AVIF_CHECKERR(avifROStreamReadBoxHeader(&s, &header), AVIF_RESULT_BMFF_PARSE_FAILED);
+        AVIF_CHECKRES(avifROStreamReadBoxHeader(&s, &header));
 
         if (!memcmp(header.type, "mdhd", 4)) {
             AVIF_CHECKERR(avifParseMediaHeaderBox(track, avifROStreamCurrent(&s), header.size, diag), AVIF_RESULT_BMFF_PARSE_FAILED);
@@ -3500,7 +3500,7 @@ static avifResult avifParseMediaBox(avifTrack * track, uint64_t rawOffset, const
                 avifParseMediaInformationBox(track, rawOffset + avifROStreamOffset(&s), avifROStreamCurrent(&s), header.size, diag));
         }
 
-        AVIF_CHECKERR(avifROStreamSkip(&s, header.size), AVIF_RESULT_BMFF_PARSE_FAILED);
+        AVIF_CHECKERR(avifROStreamSkip(&s, header.size), AVIF_RESULT_TRUNCATED_DATA);
     }
     return AVIF_RESULT_OK;
 }
@@ -3611,7 +3611,7 @@ static avifResult avifParseTrackBox(avifDecoderData * data,
     avifBool tkhdSeen = AVIF_FALSE;
     while (avifROStreamHasBytesLeft(&s, 1)) {
         avifBoxHeader header;
-        AVIF_CHECKERR(avifROStreamReadBoxHeader(&s, &header), AVIF_RESULT_BMFF_PARSE_FAILED);
+        AVIF_CHECKRES(avifROStreamReadBoxHeader(&s, &header));
 
         if (!memcmp(header.type, "tkhd", 4)) {
             if (tkhdSeen) {
@@ -3637,7 +3637,7 @@ static avifResult avifParseTrackBox(avifDecoderData * data,
             edtsBoxSeen = AVIF_TRUE;
         }
 
-        AVIF_CHECKERR(avifROStreamSkip(&s, header.size), AVIF_RESULT_BMFF_PARSE_FAILED);
+        AVIF_CHECKERR(avifROStreamSkip(&s, header.size), AVIF_RESULT_TRUNCATED_DATA);
     }
     if (!tkhdSeen) {
         avifDiagnosticsPrintf(data->diag, "Box[trak] does not contain a mandatory [tkhd] box");
@@ -3693,7 +3693,7 @@ static avifResult avifParseMovieBox(avifDecoderData * data,
     avifBool hasTrak = AVIF_FALSE;
     while (avifROStreamHasBytesLeft(&s, 1)) {
         avifBoxHeader header;
-        AVIF_CHECKERR(avifROStreamReadBoxHeader(&s, &header), AVIF_RESULT_BMFF_PARSE_FAILED);
+        AVIF_CHECKRES(avifROStreamReadBoxHeader(&s, &header));
 
         if (!memcmp(header.type, "trak", 4)) {
             AVIF_CHECKRES(
@@ -3701,7 +3701,7 @@ static avifResult avifParseMovieBox(avifDecoderData * data,
             hasTrak = AVIF_TRUE;
         }
 
-        AVIF_CHECKERR(avifROStreamSkip(&s, header.size), AVIF_RESULT_BMFF_PARSE_FAILED);
+        AVIF_CHECKERR(avifROStreamSkip(&s, header.size), AVIF_RESULT_TRUNCATED_DATA);
     }
     if (!hasTrak) {
         avifDiagnosticsPrintf(data->diag, "moov box does not contain any tracks");
@@ -4126,7 +4126,7 @@ static avifResult avifParseMinimizedImageBox(avifDecoderData * data,
         colrPropICC->u.colr.hasICC = AVIF_TRUE; // colour_type "rICC" or "prof"
         colrPropICC->u.colr.iccOffset = rawOffset + avifROStreamOffset(&s);
         colrPropICC->u.colr.iccSize = (size_t)iccDataSize;
-        AVIF_CHECKERR(avifROStreamSkip(&s, colrPropICC->u.colr.iccSize), AVIF_RESULT_BMFF_PARSE_FAILED);
+        AVIF_CHECKERR(avifROStreamSkip(&s, colrPropICC->u.colr.iccSize), AVIF_RESULT_TRUNCATED_DATA);
         AVIF_CHECKERR(avifDecoderItemAddProperty(colorItem, colrPropICC), AVIF_RESULT_OUT_OF_MEMORY);
     } else {
         AVIF_CHECKERR(avifMetaCreateProperty(meta, "skip"), AVIF_RESULT_OUT_OF_MEMORY); // Placeholder.
@@ -4274,7 +4274,7 @@ static avifResult avifParseMinimizedImageBox(avifDecoderData * data,
         tmapColrPropICC->u.colr.hasICC = AVIF_TRUE; // colour_type "rICC" or "prof"
         tmapColrPropICC->u.colr.iccOffset = rawOffset + avifROStreamOffset(&s);
         tmapColrPropICC->u.colr.iccSize = tmapIccDataSize;
-        AVIF_CHECKERR(avifROStreamSkip(&s, tmapColrPropICC->u.colr.iccSize), AVIF_RESULT_BMFF_PARSE_FAILED);
+        AVIF_CHECKERR(avifROStreamSkip(&s, tmapColrPropICC->u.colr.iccSize), AVIF_RESULT_TRUNCATED_DATA);
         AVIF_CHECKERR(avifDecoderItemAddProperty(colorItem, tmapColrPropICC), AVIF_RESULT_OUT_OF_MEMORY);
     } else {
         AVIF_CHECKERR(avifMetaCreateProperty(meta, "skip"), AVIF_RESULT_OUT_OF_MEMORY); // Placeholder.
@@ -4303,7 +4303,7 @@ static avifResult avifParseMinimizedImageBox(avifDecoderData * data,
         AVIF_CHECKRES(avifRWDataRealloc(&tmapItem->mergedExtents, tmapItem->size));
         tmapItem->ownsMergedExtents = AVIF_TRUE;
         tmapItem->mergedExtents.data[0] = 0; // unsigned int(8) version = 0;
-        AVIF_CHECKERR(avifROStreamRead(&s, tmapItem->mergedExtents.data + 1, gainmapMetadataSize), AVIF_RESULT_BMFF_PARSE_FAILED);
+        AVIF_CHECKERR(avifROStreamRead(&s, tmapItem->mergedExtents.data + 1, gainmapMetadataSize), AVIF_RESULT_TRUNCATED_DATA);
     }
 
     if (hasAlpha) {
@@ -4311,7 +4311,7 @@ static avifResult avifParseMinimizedImageBox(avifDecoderData * data,
         AVIF_CHECKERR(alphaExtent, AVIF_RESULT_OUT_OF_MEMORY);
         alphaExtent->offset = rawOffset + avifROStreamOffset(&s);
         alphaExtent->size = alphaItemDataSize;
-        AVIF_CHECKERR(avifROStreamSkip(&s, alphaExtent->size), AVIF_RESULT_BMFF_PARSE_FAILED);
+        AVIF_CHECKERR(avifROStreamSkip(&s, alphaExtent->size), AVIF_RESULT_TRUNCATED_DATA);
         alphaItem->size = alphaExtent->size;
     }
 
@@ -4320,7 +4320,7 @@ static avifResult avifParseMinimizedImageBox(avifDecoderData * data,
         AVIF_CHECKERR(gainmapExtent, AVIF_RESULT_OUT_OF_MEMORY);
         gainmapExtent->offset = rawOffset + avifROStreamOffset(&s);
         gainmapExtent->size = gainmapItemDataSize;
-        AVIF_CHECKERR(avifROStreamSkip(&s, gainmapExtent->size), AVIF_RESULT_BMFF_PARSE_FAILED);
+        AVIF_CHECKERR(avifROStreamSkip(&s, gainmapExtent->size), AVIF_RESULT_TRUNCATED_DATA);
         gainmapItem->size = gainmapExtent->size;
     }
 
@@ -4328,7 +4328,7 @@ static avifResult avifParseMinimizedImageBox(avifDecoderData * data,
     AVIF_CHECKERR(colorExtent, AVIF_RESULT_OUT_OF_MEMORY);
     colorExtent->offset = rawOffset + avifROStreamOffset(&s);
     colorExtent->size = mainItemDataSize;
-    AVIF_CHECKERR(avifROStreamSkip(&s, colorExtent->size), AVIF_RESULT_BMFF_PARSE_FAILED);
+    AVIF_CHECKERR(avifROStreamSkip(&s, colorExtent->size), AVIF_RESULT_TRUNCATED_DATA);
     colorItem->size = colorExtent->size;
 
     if (hasExif) {
@@ -4341,7 +4341,7 @@ static avifResult avifParseMinimizedImageBox(avifDecoderData * data,
         AVIF_CHECKERR(exifExtent, AVIF_RESULT_OUT_OF_MEMORY);
         exifExtent->offset = rawOffset + avifROStreamOffset(&s);
         exifExtent->size = exifDataSize; // Does not include unsigned int(32) exif_tiff_header_offset;
-        AVIF_CHECKERR(avifROStreamSkip(&s, exifExtent->size), AVIF_RESULT_BMFF_PARSE_FAILED);
+        AVIF_CHECKERR(avifROStreamSkip(&s, exifExtent->size), AVIF_RESULT_TRUNCATED_DATA);
         exifItem->size = exifExtent->size;
     }
 
@@ -4356,7 +4356,7 @@ static avifResult avifParseMinimizedImageBox(avifDecoderData * data,
         AVIF_CHECKERR(xmpExtent, AVIF_RESULT_OUT_OF_MEMORY);
         xmpExtent->offset = rawOffset + avifROStreamOffset(&s);
         xmpExtent->size = xmpDataSize;
-        AVIF_CHECKERR(avifROStreamSkip(&s, xmpExtent->size), AVIF_RESULT_BMFF_PARSE_FAILED);
+        AVIF_CHECKERR(avifROStreamSkip(&s, xmpExtent->size), AVIF_RESULT_TRUNCATED_DATA);
         xmpItem->size = xmpExtent->size;
     }
     return AVIF_RESULT_OK;
@@ -4426,7 +4426,7 @@ static avifResult avifParse(avifDecoder * decoder)
         // Parse the header, and find out how many bytes it actually was
         BEGIN_STREAM(headerStream, headerContents.data, headerContents.size, &decoder->diag, "File-level box header");
         avifBoxHeader header;
-        AVIF_CHECKERR(avifROStreamReadBoxHeaderPartial(&headerStream, &header, /*topLevel=*/AVIF_TRUE), AVIF_RESULT_BMFF_PARSE_FAILED);
+        AVIF_CHECKRES(avifROStreamReadBoxHeaderPartial(&headerStream, &header, /*topLevel=*/AVIF_TRUE));
         parseOffset += headerStream.offset;
         AVIF_ASSERT_OR_RETURN(decoder->io->sizeHint == 0 || parseOffset <= decoder->io->sizeHint);
 
@@ -4627,7 +4627,7 @@ avifBool avifPeekCompatibleFileType(const avifROData * input)
     BEGIN_STREAM(s, input->data, input->size, NULL, NULL);
 
     avifBoxHeader header;
-    if (!avifROStreamReadBoxHeaderPartial(&s, &header, /*topLevel=*/AVIF_TRUE) || memcmp(header.type, "ftyp", 4)) {
+    if (avifROStreamReadBoxHeaderPartial(&s, &header, /*topLevel=*/AVIF_TRUE) || memcmp(header.type, "ftyp", 4) != AVIF_RESULT_OK) {
         return AVIF_FALSE;
     }
     if (header.isSizeZeroBox) {
