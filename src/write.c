@@ -3618,7 +3618,15 @@ avifResult avifEncoderFinish(avifEncoder * encoder, avifRWData * output)
             AVIF_CHECKRES(avifRWStreamWriteBox(&s, "trak", AVIF_BOX_SIZE_TBD, &trak));
 
             avifBoxMarker tkhd;
-            AVIF_CHECKRES(avifRWStreamWriteFullBox(&s, "tkhd", AVIF_BOX_SIZE_TBD, 1, 1, &tkhd));
+            int tkhdFlags = AVIF_TKHD_FLAG_TRACK_ENABLED;
+            if (item->itemCategory == AVIF_ITEM_COLOR) {
+                // ISOBMFF (ISO/IEC 14496-12:2022), Section 8.3.2.1:
+                //   The tracks marked with the track_in_movie flag set to 1 are those that are intended by the file writer
+                //   for direct presentation. Thus a track that is used as input to another track — either before or after
+                //   decoding — but that is not presented by itself — should have the track_in_movie flag set to 0.
+                tkhdFlags |= AVIF_TKHD_FLAG_TRACK_IN_MOVIE;
+            }
+            AVIF_CHECKRES(avifRWStreamWriteFullBox(&s, "tkhd", AVIF_BOX_SIZE_TBD, 1, tkhdFlags, &tkhd));
             AVIF_CHECKRES(avifRWStreamWriteU64(&s, now));                    // unsigned int(64) creation_time;
             AVIF_CHECKRES(avifRWStreamWriteU64(&s, now));                    // unsigned int(64) modification_time;
             AVIF_CHECKRES(avifRWStreamWriteU32(&s, itemIndex + 1));          // unsigned int(32) track_ID;

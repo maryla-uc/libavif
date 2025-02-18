@@ -814,6 +814,13 @@ avifResult avifFindMinMaxWithoutOutliers(const float * gainMapF, int numPixels, 
 
 avifResult avifGainMapValidateMetadata(const avifGainMap * gainMap, avifDiagnostics * diag);
 
+// ---------------------------------------------------------------------------
+// tracks
+
+// TrackHeaderBox flag values.
+#define AVIF_TKHD_FLAG_TRACK_ENABLED 1
+#define AVIF_TKHD_FLAG_TRACK_IN_MOVIE 2
+
 #define AVIF_INDEFINITE_DURATION64 UINT64_MAX
 #define AVIF_INDEFINITE_DURATION32 UINT32_MAX
 

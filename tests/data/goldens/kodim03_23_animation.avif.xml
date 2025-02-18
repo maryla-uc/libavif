@@ -55,7 +55,7 @@
 <MovieHeaderBox Size="120" Type="mvhd" Version="1" Flags="0" Specification="p12" Container="moov" CreationTime="REDACTED" ModificationTime="REDACTED" TimeScale="25" Duration="-1" NextTrackID="1">
 </MovieHeaderBox>
 <TrackBox Size="582" Type="trak" Specification="p12" Container="moov" >
-<TrackHeaderBox Size="104" Type="tkhd" Version="1" Flags="1" Specification="p12" Container="trak" CreationTime="REDACTED" ModificationTime="REDACTED" TrackID="1" Duration="-1" Width="768.00" Height="512.00">
+<TrackHeaderBox Size="104" Type="tkhd" Version="1" Flags="3" Specification="p12" Container="trak" CreationTime="REDACTED" ModificationTime="REDACTED" TrackID="1" Duration="-1" Width="768.00" Height="512.00">
 <Matrix m11="0x00010000" m12="0x00000000" m13="0x00000000" m21="0x00000000" m22="0x00010000" m23="0x00000000" m31="0x00000000" m32="0x00000000" m33="0x40000000"/>
 </TrackHeaderBox>
 <EditBox Size="44" Type="edts" Specification="p12" Container="trak" >

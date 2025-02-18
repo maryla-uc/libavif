@@ -1583,7 +1583,7 @@ static avifResult avifDecoderAdoptGridTileCodecType(avifDecoder * decoder,
         AVIF_ASSERT_OR_RETURN(itemIdx < gridItem->meta->items.count);
         avifDecoderItem * item = gridItem->meta->items.item[itemIdx];
 
-        // According to HEIF (ISO 14496-12), Section 6.6.2.3.1, the SingleItemTypeReferenceBox of type 'dimg'
+        // According to HEIF (ISO 23008-12), Section 6.6.2.3.1, the SingleItemTypeReferenceBox of type 'dimg'
         // identifies the input images of the derived image item of type 'grid'. Since the reference_count
         // shall be equal to rows*columns, unknown tile item types cannot be skipped but must be considered
         // as errors.
