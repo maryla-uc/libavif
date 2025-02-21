@@ -772,17 +772,8 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             return AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION;
         }
 
-        int minQuantizer;
-        int maxQuantizer;
-        if (alpha) {
-            minQuantizer = encoder->minQuantizerAlpha;
-            maxQuantizer = encoder->maxQuantizerAlpha;
-        } else {
-            minQuantizer = encoder->minQuantizer;
-            maxQuantizer = encoder->maxQuantizer;
-        }
-        minQuantizer = AVIF_CLAMP(minQuantizer, 0, 63);
-        maxQuantizer = AVIF_CLAMP(maxQuantizer, 0, 63);
+        int minQuantizer = AVIF_QUANTIZER_BEST_QUALITY;
+        int maxQuantizer = AVIF_QUANTIZER_WORST_QUALITY;
         if ((cfg->rc_end_usage == AOM_VBR) || (cfg->rc_end_usage == AOM_CBR)) {
             // cq-level is ignored in these two end-usage modes, so adjust minQuantizer and
             // maxQuantizer to the target quantizer.
@@ -881,19 +872,6 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
         if ((cfg->g_w != image->width) || (cfg->g_h != image->height)) {
             // We are not ready for dimension change for now.
             return AVIF_RESULT_NOT_IMPLEMENTED;
-        }
-        if (alpha) {
-            if (encoderChanges & (AVIF_ENCODER_CHANGE_MIN_QUANTIZER_ALPHA | AVIF_ENCODER_CHANGE_MAX_QUANTIZER_ALPHA)) {
-                cfg->rc_min_quantizer = AVIF_CLAMP(encoder->minQuantizerAlpha, 0, 63);
-                cfg->rc_max_quantizer = AVIF_CLAMP(encoder->maxQuantizerAlpha, 0, 63);
-                quantizerUpdated = AVIF_TRUE;
-            }
-        } else {
-            if (encoderChanges & (AVIF_ENCODER_CHANGE_MIN_QUANTIZER | AVIF_ENCODER_CHANGE_MAX_QUANTIZER)) {
-                cfg->rc_min_quantizer = AVIF_CLAMP(encoder->minQuantizer, 0, 63);
-                cfg->rc_max_quantizer = AVIF_CLAMP(encoder->maxQuantizer, 0, 63);
-                quantizerUpdated = AVIF_TRUE;
-            }
         }
         const int quantizerChangedBit = alpha ? AVIF_ENCODER_CHANGE_QUANTIZER_ALPHA : AVIF_ENCODER_CHANGE_QUANTIZER;
         if (encoderChanges & quantizerChangedBit) {

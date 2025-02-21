@@ -570,18 +570,6 @@ static avifBool avifEncoderDetectChanges(const avifEncoder * encoder, avifEncode
     if (encoder->data->lastQuantizerAlpha != encoder->data->quantizerAlpha) {
         *encoderChanges |= AVIF_ENCODER_CHANGE_QUANTIZER_ALPHA;
     }
-    if (lastEncoder->minQuantizer != encoder->minQuantizer) {
-        *encoderChanges |= AVIF_ENCODER_CHANGE_MIN_QUANTIZER;
-    }
-    if (lastEncoder->maxQuantizer != encoder->maxQuantizer) {
-        *encoderChanges |= AVIF_ENCODER_CHANGE_MAX_QUANTIZER;
-    }
-    if (lastEncoder->minQuantizerAlpha != encoder->minQuantizerAlpha) {
-        *encoderChanges |= AVIF_ENCODER_CHANGE_MIN_QUANTIZER_ALPHA;
-    }
-    if (lastEncoder->maxQuantizerAlpha != encoder->maxQuantizerAlpha) {
-        *encoderChanges |= AVIF_ENCODER_CHANGE_MAX_QUANTIZER_ALPHA;
-    }
     if (encoder->data->lastTileRowsLog2 != encoder->data->tileRowsLog2) {
         *encoderChanges |= AVIF_ENCODER_CHANGE_TILE_ROWS_LOG2;
     }

@@ -668,19 +668,10 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
             return AVIF_RESULT_INVALID_CODEC_SPECIFIC_OPTION;
         }
 
-        int minQuantizer;
-        int maxQuantizer;
-        if (alpha) {
-            minQuantizer = encoder->minQuantizerAlpha;
-            maxQuantizer = encoder->maxQuantizerAlpha;
-        } else {
-            minQuantizer = encoder->minQuantizer;
-            maxQuantizer = encoder->maxQuantizer;
-        }
         // Scale from aom's [0:63] to avm's [0:255]. TODO(yguyon): Accept [0:255] directly in avifEncoder.
         quantizer = avmScaleQuantizer(quantizer, image->depth);
-        minQuantizer = avmScaleQuantizer(minQuantizer, image->depth);
-        maxQuantizer = avmScaleQuantizer(maxQuantizer, image->depth);
+        int minQuantizer = avmScaleQuantizer(AVIF_QUANTIZER_BEST_QUALITY, image->depth);
+        int maxQuantizer = avmScaleQuantizer(AVIF_QUANTIZER_WORST_QUALITY, image->depth);
         if ((cfg->rc_end_usage == AOM_VBR) || (cfg->rc_end_usage == AOM_CBR)) {
             // cq-level is ignored in these two end-usage modes, so adjust minQuantizer and
             // maxQuantizer to the target quantizer.
@@ -772,19 +763,6 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
             return AVIF_RESULT_NOT_IMPLEMENTED;
         }
         quantizer = avmScaleQuantizer(quantizer, image->depth);
-        if (alpha) {
-            if (encoderChanges & (AVIF_ENCODER_CHANGE_MIN_QUANTIZER_ALPHA | AVIF_ENCODER_CHANGE_MAX_QUANTIZER_ALPHA)) {
-                cfg->rc_min_quantizer = avmScaleQuantizer(encoder->minQuantizerAlpha, image->depth);
-                cfg->rc_max_quantizer = avmScaleQuantizer(encoder->maxQuantizerAlpha, image->depth);
-                quantizerUpdated = AVIF_TRUE;
-            }
-        } else {
-            if (encoderChanges & (AVIF_ENCODER_CHANGE_MIN_QUANTIZER | AVIF_ENCODER_CHANGE_MAX_QUANTIZER)) {
-                cfg->rc_min_quantizer = avmScaleQuantizer(encoder->minQuantizer, image->depth);
-                cfg->rc_max_quantizer = avmScaleQuantizer(encoder->maxQuantizer, image->depth);
-                quantizerUpdated = AVIF_TRUE;
-            }
-        }
         const int quantizerChangedBit = alpha ? AVIF_ENCODER_CHANGE_QUANTIZER_ALPHA : AVIF_ENCODER_CHANGE_QUANTIZER;
         if (encoderChanges & quantizerChangedBit) {
             if ((cfg->rc_end_usage == AOM_VBR) || (cfg->rc_end_usage == AOM_CBR)) {
@@ -794,17 +772,8 @@ static avifResult avmCodecEncodeImage(avifCodec * codec,
                     cfg->rc_min_quantizer = AVIF_QUANTIZER_LOSSLESS;
                     cfg->rc_max_quantizer = AVIF_QUANTIZER_LOSSLESS;
                 } else {
-                    int minQuantizer;
-                    int maxQuantizer;
-                    if (alpha) {
-                        minQuantizer = encoder->minQuantizerAlpha;
-                        maxQuantizer = encoder->maxQuantizerAlpha;
-                    } else {
-                        minQuantizer = encoder->minQuantizer;
-                        maxQuantizer = encoder->maxQuantizer;
-                    }
-                    minQuantizer = avmScaleQuantizer(minQuantizer, image->depth);
-                    maxQuantizer = avmScaleQuantizer(maxQuantizer, image->depth);
+                    const int minQuantizer = avmScaleQuantizer(AVIF_QUANTIZER_BEST_QUALITY, image->depth);
+                    const int maxQuantizer = avmScaleQuantizer(AVIF_QUANTIZER_WORST_QUALITY, image->depth);
                     cfg->rc_min_quantizer = AVIF_MAX(quantizer - 4, minQuantizer);
                     cfg->rc_max_quantizer = AVIF_MIN(quantizer + 4, maxQuantizer);
                 }
