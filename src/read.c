@@ -443,6 +443,8 @@ static const avifPropertyArray * avifSampleTableGetProperties(const avifSampleTa
 typedef struct avifTrack
 {
     uint32_t id;
+    avifBool enabled; // track_enabled, ISO/IEC 14496-12:2020 Section 8.3.2.3
+    avifBool inMovie; // track_in_movie, ISO/IEC 14496-12:2020 Section 8.3.2.3
     uint8_t handlerType[4];
     uint32_t auxForID; // if non-zero, this track is an auxC plane for Track #{auxForID}
     uint32_t premByID; // if non-zero, this track is premultiplied by Track #{premByID}
@@ -3370,7 +3372,11 @@ static avifBool avifParseTrackHeaderBox(avifTrack * track, const uint8_t * raw, 
     BEGIN_STREAM(s, raw, rawLen, diag, "Box[tkhd]");
 
     uint8_t version;
-    AVIF_CHECK(avifROStreamReadVersionAndFlags(&s, &version, NULL));
+    uint32_t flags;
+    AVIF_CHECK(avifROStreamReadVersionAndFlags(&s, &version, &flags));
+
+    track->enabled = flags & 1;
+    track->inMovie = flags & 2;
 
     uint32_t ignored32, trackID;
     uint64_t ignored64;
@@ -3827,6 +3833,12 @@ static avifResult avifParseTrackBox(avifDecoderData * data, uint64_t rawOffset, 
     if (!tkhdSeen) {
         avifDiagnosticsPrintf(data->diag, "Box[trak] does not contain a mandatory [tkhd] box");
         return AVIF_RESULT_BMFF_PARSE_FAILED;
+    }
+    if (!track->enabled) {
+        // ISO/IEC 14496-12:2020 Section 8.3.2.3:
+        //  A disabled track (when the value of this flag is zero) is treated as if it were not present.
+        avifArrayPop(&data->tracks);
+        return AVIF_TRUE;
     }
     if (!edtsBoxSeen) {
         track->repetitionCount = AVIF_REPETITION_COUNT_UNKNOWN;

@@ -145,8 +145,9 @@ static const char * avifPrettyFilename(const char * filename)
 
 typedef struct avifInputFile
 {
-    const char * filename; // If AVIF_FILENAME_STDIN, use stdin (y4m)
-    uint64_t duration;     // If 0, use the default duration
+    const char * filename;             // If AVIF_FILENAME_STDIN, use stdin
+    avifAppFileFormat stdinFileFormat; // Format if filename is AVIF_FILENAME_STDIN
+    uint64_t duration;                 // If 0, use the default duration
     avifInputFileSettings settings;
 } avifInputFile;
 
