@@ -223,6 +223,7 @@ static void syntaxLong(void)
     printf("    -p,--premultiply                  : Premultiply color by the alpha channel and signal this in the AVIF\n");
     printf("    --sharpyuv                        : Use sharp RGB to YUV420 conversion (if supported). Ignored for y4m or if output is not 420.\n");
     printf("    --stdin                           : Read y4m frames from stdin instead of file paths. No other input is allowed. The output file path must still be provided.\n");
+    printf("    --stdin-any-format              : Read any supported image format from stdin instead of file paths. No other input is allowed. The output file path must still be provided.\n");
     printf("    --cicp,--nclx P/T/M               : Set CICP values (nclx colr box) (3 raw numbers, use -r to set range flag)\n");
     printf("                                        P = color primaries\n");
     printf("                                        T = transfer characteristics\n");
@@ -1460,6 +1461,7 @@ int main(int argc, char * argv[])
     settings.ignoreColorProfile = AVIF_FALSE;
     settings.ignoreGainMap = AVIF_FALSE;
     settings.cicpExplicitlySet = AVIF_FALSE;
+    settings.stdinAnyFormat = AVIF_FALSE;
 
     avifInputFileSettings pendingSettings;
     memset(&pendingSettings, 0, sizeof(pendingSettings));
@@ -1522,18 +1524,14 @@ int main(int argc, char * argv[])
                     settings.jobs = 1;
                 }
             }
-        } else if (!strcmp(arg, "--stdin")) {
+        } else if (!strcmp(arg, "--stdin") && settings.stdinAnyFormat) {
+            fprintf(stderr, "ERROR: Cannot use both --stdin and --stdin-any-format\n");
+            goto cleanup;
+        }
             avifInputAdd(&input, AVIF_FILENAME_STDIN, settings.outputTiming.duration, &pendingSettings);
 
             if (input.filesCount == 2) {
-                // The only valid pattern here is
-                //   avifenc [settings...] output.avif [more_settings...] --stdin
-                // because multiple input files are forbidden with --stdin and
-                // there must be an output file specified with or without --output.
-                // Invalid patterns will be rejected later on.
-
-                // Merge all the settings seen so far and associate them with stdin only.
-                if (!avifInputFileSettingsOverwrite(/*dst=*/&input.files[0].settings, /*src=*/&input.files[1].settings)) {
+                if (!avifInputFileSettingsOverwrite(&input.files[0].settings, &input.files[1].settings)) {
                     fprintf(stderr, "ERROR: memory allocation failure\n");
                     goto cleanup;
                 }
@@ -1541,19 +1539,15 @@ int main(int argc, char * argv[])
                 input.files[1].settings = input.files[0].settings;
                 memset(&input.files[0].settings, 0, sizeof(input.files[0].settings));
 
-                // Swap the file and stdin so that the file is last and picked as output later on.
                 const avifInputFile output = input.files[0];
                 input.files[0] = input.files[1];
                 input.files[1] = output;
-
-                // This should now be equivalent to:
-                //   avifenc [settings...] [more_settings...] --stdin output.avif
 
             } else if (input.filesCount > 2) {
                 fprintf(stderr, "ERROR: there cannot be any other input if --stdin is specified\n");
                 goto cleanup;
             }
-        } else if (!strcmp(arg, "-o") || !strcmp(arg, "--output")) {
+        }
             NEXTARG();
             outputFilename = arg;
 #if defined(AVIF_ENABLE_EXPERIMENTAL_MINI)
