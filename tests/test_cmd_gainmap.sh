@@ -34,15 +34,15 @@ trap cleanup EXIT
 
 pushd ${TMP_DIR}
   # The default gain map quality is 60.
-  "${AVIFENC}" -s 10 "${INPUT_JPEG_GAINMAP}" "${ENCODED_FILE}" > "${OUT_MSG}"
+  "${AVIFENC}" -s 10 "${INPUT_JPEG_GAINMAP}" "${ENCODED_FILE}" 2> "${OUT_MSG}"
   grep " gain map quality \[60 " "${OUT_MSG}"
   size_q60=$(stat --printf="%s" "${ENCODED_FILE}")
-  "${AVIFENC}" -s 10 --qgain-map 85 "${INPUT_JPEG_GAINMAP}" "${ENCODED_FILE}" > "${OUT_MSG}"
+  "${AVIFENC}" -s 10 --qgain-map 85 "${INPUT_JPEG_GAINMAP}" "${ENCODED_FILE}" 2> "${OUT_MSG}"
   grep " gain map quality \[85 " "${OUT_MSG}"
   size_q85=$(stat --printf="%s" "${ENCODED_FILE}")
   test "$size_q85" -gt "$size_q60"
   # With --ignore-gain-map, no gain map should be encoded
-  "${AVIFENC}" -s 10 --qgain-map 85 --ignore-gain-map "${INPUT_JPEG_GAINMAP}" "${ENCODED_FILE}" > "${OUT_MSG}"
+  "${AVIFENC}" -s 10 --qgain-map 85 --ignore-gain-map "${INPUT_JPEG_GAINMAP}" "${ENCODED_FILE}" 2> "${OUT_MSG}"
   grep "gain map quality" "${OUT_MSG}" && exit 1
   grep "Gain map *: Absent" "${OUT_MSG}"
 popd

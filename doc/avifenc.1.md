@@ -71,6 +71,9 @@ Input format can be either JPEG, PNG or YUV4MPEG2 (Y4M).
 **\--stdin**
 :   Read y4m frames from stdin instead of files; no input filenames allowed, must set before offering output filename.
 
+**\--stdout**
+:   Output to stdout instead of a file.
+
 **\--cicp**, **\--nclx** _P_/_T_/_M_
 :   Set CICP values (nclx colr box) (3 raw numbers, use **-r** to set range flag).
 
