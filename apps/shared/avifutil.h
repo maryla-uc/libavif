@@ -5,6 +5,7 @@
 #define LIBAVIF_APPS_SHARED_AVIFUTIL_H
 
 #include "avif/avif.h"
+#include <stdio.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -28,8 +29,8 @@ extern "C" {
 #define AVIF_FMT_ZU "zu"
 #endif
 
-void avifImageDump(const avifImage * avif, uint32_t gridCols, uint32_t gridRows, avifProgressiveState progressiveState);
-void avifContainerDump(const avifDecoder * decoder);
+void avifImageDump(FILE * f, const avifImage * avif, uint32_t gridCols, uint32_t gridRows, avifProgressiveState progressiveState);
+void avifContainerDump(FILE * f, const avifDecoder * decoder);
 void avifPrintVersions(void);
 void avifDumpDiagnostics(const avifDiagnostics * diag);
 int avifQueryCPUCount(void); // Returns 1 if it cannot query or fails to query

@@ -223,6 +223,7 @@ static void syntaxLong(void)
     printf("    -p,--premultiply                  : Premultiply color by the alpha channel and signal this in the AVIF\n");
     printf("    --sharpyuv                        : Use sharp RGB to YUV420 conversion (if supported). Ignored for y4m or if output is not 420.\n");
     printf("    --stdin                           : Read y4m frames from stdin instead of file paths. No other input is allowed. The output file path must still be provided.\n");
+    printf("    --stdout                          : Output to stdout instead of a file\n");
     printf("    --cicp,--nclx P/T/M               : Set CICP values (nclx colr box) (3 raw numbers, use -r to set range flag)\n");
     printf("                                        P = color primaries\n");
     printf("                                        T = transfer characteristics\n");
@@ -1005,15 +1006,16 @@ static avifBool avifEncodeRestOfImageSequence(avifEncoder * encoder,
             goto cleanup;
         }
 
-        printf(" * Encoding frame %d [%" PRIu64 "/%" PRIu64 " ts] color quality [%d (%s)], alpha quality [%d (%s)]: %s\n",
-               imageIndex,
-               nextDurationInTimescales,
-               settings->outputTiming.timescale,
-               encoder->quality,
-               qualityString(encoder->quality),
-               encoder->qualityAlpha,
-               qualityString(encoder->qualityAlpha),
-               avifPrettyFilename(nextFile->filename));
+        fprintf(stderr,
+                " * Encoding frame %d [%" PRIu64 "/%" PRIu64 " ts] color quality [%d (%s)], alpha quality [%d (%s)]: %s\n",
+                imageIndex,
+                nextDurationInTimescales,
+                settings->outputTiming.timescale,
+                encoder->quality,
+                qualityString(encoder->quality),
+                encoder->qualityAlpha,
+                qualityString(encoder->qualityAlpha),
+                avifPrettyFilename(nextFile->filename));
 
         const avifResult nextImageResult = avifEncoderAddImage(encoder, nextImage, nextDurationInTimescales, AVIF_ADD_IMAGE_FLAG_NONE);
         if (nextImageResult != AVIF_RESULT_OK) {
@@ -1111,12 +1113,13 @@ static avifBool avifEncodeRestOfLayeredImage(avifEncoder * encoder,
             encodingImage = nextImage;
         }
 
-        printf(" * Encoding layer %d: color quality [%d (%s)], alpha quality [%d (%s)]\n",
-               layerIndex,
-               encoder->quality,
-               qualityString(encoder->quality),
-               encoder->qualityAlpha,
-               qualityString(encoder->qualityAlpha));
+        fprintf(stderr,
+                " * Encoding layer %d: color quality [%d (%s)], alpha quality [%d (%s)]\n",
+                layerIndex,
+                encoder->quality,
+                qualityString(encoder->quality),
+                encoder->qualityAlpha,
+                qualityString(encoder->qualityAlpha));
 
         const avifResult result = avifEncoderAddImage(encoder, encodingImage, settings->outputTiming.duration, AVIF_ADD_IMAGE_FLAG_NONE);
         if (result != AVIF_RESULT_OK) {
@@ -1198,16 +1201,17 @@ static avifBool avifEncodeImagesFixedQuality(const avifSettings * settings,
     }
 #endif
 
-    printf("Encoding with initial settings: codec '%s' speed [%s], color quality [%d (%s)], alpha quality [%d (%s)]%s, %s, %d worker thread(s), please wait...\n",
-           codecName ? codecName : "none",
-           speedStr,
-           encoder->quality,
-           qualityString(encoder->quality),
-           encoder->qualityAlpha,
-           qualityString(encoder->qualityAlpha),
-           gainMapStr,
-           encoder->autoTiling ? "automatic tiling" : manualTilingStr,
-           settings->jobs);
+    fprintf(stderr,
+            "Encoding with initial settings: codec '%s' speed [%s], color quality [%d (%s)], alpha quality [%d (%s)]%s, %s, %d worker thread(s), please wait...\n",
+            codecName ? codecName : "none",
+            speedStr,
+            encoder->quality,
+            qualityString(encoder->quality),
+            encoder->qualityAlpha,
+            qualityString(encoder->qualityAlpha),
+            gainMapStr,
+            encoder->autoTiling ? "automatic tiling" : manualTilingStr,
+            settings->jobs);
     if (settings->progressive) {
         // If the color quality is less than 10, the main() function overrides
         // --progressive and sets settings->autoProgressive to false.
@@ -1218,12 +1222,13 @@ static avifBool avifEncodeImagesFixedQuality(const avifSettings * settings,
     }
 
     if (settings->layers > 1) {
-        printf(" * Encoding layer %d: color quality [%d (%s)], alpha quality [%d (%s)]\n",
-               0,
-               encoder->quality,
-               qualityString(encoder->quality),
-               encoder->qualityAlpha,
-               qualityString(encoder->qualityAlpha));
+        fprintf(stderr,
+                " * Encoding layer %d: color quality [%d (%s)], alpha quality [%d (%s)]\n",
+                0,
+                encoder->quality,
+                qualityString(encoder->quality),
+                encoder->qualityAlpha,
+                qualityString(encoder->qualityAlpha));
     }
 
     if (settings->gridDimsPresent) {
@@ -1243,15 +1248,16 @@ static avifBool avifEncodeImagesFixedQuality(const avifSettings * settings,
 
         uint64_t firstDurationInTimescales = firstFile->duration ? firstFile->duration : settings->outputTiming.duration;
         if (firstFile->filename == AVIF_FILENAME_STDIN || (settings->layers == 1 && input->filesCount > 1)) {
-            printf(" * Encoding frame %d [%" PRIu64 "/%" PRIu64 " ts] color quality [%d (%s)], alpha quality [%d (%s)]: %s\n",
-                   0,
-                   firstDurationInTimescales,
-                   settings->outputTiming.timescale,
-                   encoder->quality,
-                   qualityString(encoder->quality),
-                   encoder->qualityAlpha,
-                   qualityString(encoder->qualityAlpha),
-                   avifPrettyFilename(firstFile->filename));
+            fprintf(stderr,
+                    " * Encoding frame %d [%" PRIu64 "/%" PRIu64 " ts] color quality [%d (%s)], alpha quality [%d (%s)]: %s\n",
+                    0,
+                    firstDurationInTimescales,
+                    settings->outputTiming.timescale,
+                    encoder->quality,
+                    qualityString(encoder->quality),
+                    encoder->qualityAlpha,
+                    qualityString(encoder->qualityAlpha),
+                    avifPrettyFilename(firstFile->filename));
         }
         const avifResult addImageResult = avifEncoderAddImage(encoder, firstImage, firstDurationInTimescales, addImageFlags);
         if (addImageResult != AVIF_RESULT_OK) {
@@ -1320,11 +1326,12 @@ static avifBool avifEncodeImages(avifSettings * settings,
         return AVIF_FALSE;
     }
 
-    printf("Starting a binary search to find the %s%s generating the encoded image size closest to %d bytes, please wait...\n",
-           settings->qualityAlphaIsConstrained ? "color quality"
-                                               : (settings->qualityIsConstrained ? "alpha quality" : "color and alpha qualities"),
-           (hasGainMap && !settings->qualityGainMapIsConstrained) ? " and gain map quality" : "",
-           settings->targetSize);
+    fprintf(stderr,
+            "Starting a binary search to find the %s%s generating the encoded image size closest to %d bytes, please wait...\n",
+            settings->qualityAlphaIsConstrained ? "color quality"
+                                                : (settings->qualityIsConstrained ? "alpha quality" : "color and alpha qualities"),
+            (hasGainMap && !settings->qualityGainMapIsConstrained) ? " and gain map quality" : "",
+            settings->targetSize);
     const size_t targetSize = (size_t)settings->targetSize;
 
     // TODO(yguyon): Use quantizer instead of quality because quantizer range is smaller (faster binary search).
@@ -1351,7 +1358,7 @@ static avifBool avifEncodeImages(avifSettings * settings,
             avifRWDataFree(&closestEncoded);
             return AVIF_FALSE;
         }
-        printf("Encoded image of size %" AVIF_FMT_ZU " bytes.\n", encoded->size);
+        fprintf(stderr, "Encoded image of size %" AVIF_FMT_ZU " bytes.\n", encoded->size);
 
         if (encoded->size == targetSize) {
             return AVIF_TRUE;
@@ -1386,17 +1393,17 @@ static avifBool avifEncodeImages(avifSettings * settings,
     avifRWDataFree(encoded);
     *encoded = closestEncoded;
     *byteSizes = closestByteSizes;
-    printf("Kept the encoded image of size %" AVIF_FMT_ZU " bytes generated with ", encoded->size);
+    fprintf(stderr, "Kept the encoded image of size %" AVIF_FMT_ZU " bytes generated with ", encoded->size);
     if (!settings->qualityIsConstrained) {
-        printf("color quality %d", settings->overrideQuality);
+        fprintf(stderr, "color quality %d", settings->overrideQuality);
     }
     if (!settings->qualityAlphaIsConstrained) {
         if (!settings->qualityIsConstrained) {
-            printf(" and ");
+            fprintf(stderr, " and ");
         }
-        printf("alpha quality %d", settings->overrideQualityAlpha);
+        fprintf(stderr, "alpha quality %d", settings->overrideQualityAlpha);
     }
-    printf(".\n");
+    fprintf(stderr, ".\n");
     return AVIF_TRUE;
 }
 
@@ -1478,6 +1485,7 @@ int main(int argc, char * argv[])
     uint32_t gridCellCount = 0;
     avifImage ** gridCells = NULL;
     avifImage * gridSplitImage = NULL; // used for cleanup tracking
+    avifBool outputToStdout = AVIF_FALSE;
 
     // By default, the color profile itself is unspecified, so CP/TC are set (to 2) accordingly.
     // However, if the end-user doesn't specify any CICP, we will convert to YUV using BT601
@@ -1553,6 +1561,8 @@ int main(int argc, char * argv[])
                 fprintf(stderr, "ERROR: there cannot be any other input if --stdin is specified\n");
                 goto cleanup;
             }
+        } else if (!strcmp(arg, "--stdout")) {
+            outputToStdout = AVIF_TRUE;
         } else if (!strcmp(arg, "-o") || !strcmp(arg, "--output")) {
             NEXTARG();
             outputFilename = arg;
@@ -2050,7 +2060,7 @@ int main(int argc, char * argv[])
     avifInputFileSettings emptySettingsReference;
     memset(&emptySettingsReference, 0, sizeof(emptySettingsReference));
 
-    if (!outputFilename && input.filesCount > 1 && input.files[input.filesCount - 1].filename != AVIF_FILENAME_STDIN) {
+    if (!outputFilename && !outputToStdout && input.filesCount > 1 && input.files[input.filesCount - 1].filename != AVIF_FILENAME_STDIN) {
         --input.filesCount;
         outputFilename = input.files[input.filesCount].filename;
         if (memcmp(&input.files[input.filesCount].settings, &emptySettingsReference, sizeof(avifInputFileSettings)) != 0) {
@@ -2068,12 +2078,12 @@ int main(int argc, char * argv[])
         goto cleanup;
     }
 
-    if (!outputFilename) {
+    if (!outputFilename && !outputToStdout) {
         fprintf(stderr, "ERROR: no output specified\n");
         goto cleanup;
     }
 
-    if (noOverwrite && fileExists(outputFilename)) {
+    if (noOverwrite && outputFilename && fileExists(outputFilename)) {
         fprintf(stderr, "ERROR: output file %s already exists and --no-overwrite was specified\n", outputFilename);
         goto cleanup;
     }
@@ -2286,9 +2296,10 @@ int main(int argc, char * argv[])
 
         if (settings.cicpExplicitlySet) {
             // Only warn if someone explicitly asked for identity.
-            printf("WARNING: matrixCoefficients may not be set to identity (0) when %s. Resetting MC to defaults (%d).\n",
-                   (input.requestedFormat == AVIF_PIXEL_FORMAT_YUV400) ? "encoding 4:0:0" : "subsampling",
-                   image->matrixCoefficients);
+            fprintf(stderr,
+                    "WARNING: matrixCoefficients may not be set to identity (0) when %s. Resetting MC to defaults (%d).\n",
+                    (input.requestedFormat == AVIF_PIXEL_FORMAT_YUV400) ? "encoding 4:0:0" : "subsampling",
+                    image->matrixCoefficients);
         }
     }
 
@@ -2325,8 +2336,9 @@ int main(int argc, char * argv[])
 
         if (settings.cicpExplicitlySet) {
             // Only warn if someone explicitly asked for identity.
-            printf("WARNING: matrixCoefficients may not be set to identity (0) when encoding 4:0:0. Resetting MC to defaults (%d).\n",
-                   image->matrixCoefficients);
+            fprintf(stderr,
+                    "WARNING: matrixCoefficients may not be set to identity (0) when encoding 4:0:0. Resetting MC to defaults (%d).\n",
+                    image->matrixCoefficients);
         }
     }
     if ((image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY) && (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV444)) {
@@ -2334,7 +2346,7 @@ int main(int argc, char * argv[])
         goto cleanup;
     }
 
-    printf("Successfully loaded: %s\n", avifPrettyFilename(firstFile->filename));
+    fprintf(stderr, "Successfully loaded: %s\n", avifPrettyFilename(firstFile->filename));
 
     // Prepare image timings
     if ((settings.outputTiming.duration == 0) && (settings.outputTiming.timescale == 0) && (firstSourceTiming.duration > 0) &&
@@ -2445,7 +2457,7 @@ int main(int argc, char * argv[])
     // Guess if the enduser is asking for lossless and enable it so that warnings can be emitted
     if (!lossless && usingLosslessColor && (!hasAlpha || usingLosslessAlpha)) {
         // The enduser is probably expecting lossless. Turn it on and emit warnings
-        printf("Quality set to %d, assuming --lossless to enable warnings on potential lossless issues.\n", AVIF_QUALITY_LOSSLESS);
+        fprintf(stderr, "Quality set to %d, assuming --lossless to enable warnings on potential lossless issues.\n", AVIF_QUALITY_LOSSLESS);
         lossless = AVIF_TRUE;
     }
 
@@ -2501,7 +2513,7 @@ int main(int argc, char * argv[])
         // Grid image!
 
         gridCellCount = settings.gridDims[0] * settings.gridDims[1];
-        printf("Preparing to encode a %ux%u grid (%u cells)...\n", settings.gridDims[0], settings.gridDims[1], gridCellCount);
+        fprintf(stderr, "Preparing to encode a %ux%u grid (%u cells)...\n", settings.gridDims[0], settings.gridDims[1], gridCellCount);
 
         gridCells = calloc(gridCellCount, sizeof(avifImage *));
         if (gridCells == NULL) {
@@ -2514,7 +2526,7 @@ int main(int argc, char * argv[])
         const avifInputFile * nextFile;
         while ((nextFile = avifInputGetFile(&input, imageIndex)) != NULL) {
             if (imageIndex == 1) {
-                printf("Loading additional cells for grid image (%u cells)...\n", gridCellCount);
+                fprintf(stderr, "Loading additional cells for grid image (%u cells)...\n", gridCellCount);
             }
             if (imageIndex >= (int)gridCellCount) {
                 // We have enough, warn and continue
@@ -2567,7 +2579,7 @@ int main(int argc, char * argv[])
         }
 
         if (imageIndex == 1) {
-            printf("Single image input for a grid image. Attempting to split into %u cells...\n", gridCellCount);
+            fprintf(stderr, "Single image input for a grid image. Attempting to split into %u cells...\n", gridCellCount);
             gridSplitImage = image;
             gridCells[0] = NULL;
 
@@ -2585,9 +2597,10 @@ int main(int argc, char * argv[])
     if (lossless) {
         lossyHint = " (Lossless)";
     }
-    printf("AVIF to be written:%s\n", lossyHint);
+    fprintf(stderr, "AVIF to be written:%s\n", lossyHint);
     const avifImage * avif = gridCells ? gridCells[0] : image;
-    avifImageDump(avif,
+    avifImageDump(stderr,
+                  avif,
                   settings.gridDims[0],
                   settings.gridDims[1],
                   settings.layers > 1 ? AVIF_PROGRESSIVE_STATE_AVAILABLE : AVIF_PROGRESSIVE_STATE_UNAVAILABLE);
@@ -2597,25 +2610,25 @@ int main(int argc, char * argv[])
         goto cleanup;
     }
 
-    printf("Encoded successfully.\n");
-    printf(" * Color total size: %" AVIF_FMT_ZU " bytes\n", byteSizes.colorSizeBytes);
-    printf(" * Alpha total size: %" AVIF_FMT_ZU " bytes\n", byteSizes.alphaSizeBytes);
+    fprintf(stderr, "Encoded successfully.\n");
+    fprintf(stderr, " * Color total size: %" AVIF_FMT_ZU " bytes\n", byteSizes.colorSizeBytes);
+    fprintf(stderr, " * Alpha total size: %" AVIF_FMT_ZU " bytes\n", byteSizes.alphaSizeBytes);
     if (byteSizes.gainMapSizeBytes > 0) {
-        printf(" * Gain Map AV1 total size: %" AVIF_FMT_ZU " bytes\n", byteSizes.gainMapSizeBytes);
+        fprintf(stderr, " * Gain Map AV1 total size: %" AVIF_FMT_ZU " bytes\n", byteSizes.gainMapSizeBytes);
     }
     if (isImageSequence) {
         if (settings.repetitionCount == AVIF_REPETITION_COUNT_INFINITE) {
-            printf(" * Repetition Count: Infinite\n");
+            fprintf(stderr, " * Repetition Count: Infinite\n");
         } else {
-            printf(" * Repetition Count: %d\n", settings.repetitionCount);
+            fprintf(stderr, " * Repetition Count: %d\n", settings.repetitionCount);
         }
     }
-    if (noOverwrite && fileExists(outputFilename)) {
+    if (noOverwrite && outputFilename && fileExists(outputFilename)) {
         // check again before write
         fprintf(stderr, "ERROR: output file %s already exists and --no-overwrite was specified\n", outputFilename);
         goto cleanup;
     }
-    FILE * f = fopen(outputFilename, "wb");
+    FILE * f = outputToStdout ? stdout : fopen(outputFilename, "wb");
     if (!f) {
         fprintf(stderr, "ERROR: Failed to open file for write: %s\n", outputFilename);
         goto cleanup;
@@ -2624,9 +2637,11 @@ int main(int argc, char * argv[])
         fprintf(stderr, "Failed to write %" AVIF_FMT_ZU " bytes: %s\n", raw.size, outputFilename);
         goto cleanup;
     } else {
-        printf("Wrote AVIF: %s\n", outputFilename);
+        fprintf(stderr, "Wrote AVIF: %s\n", outputFilename);
     }
-    fclose(f);
+    if (f != stdout) {
+        fclose(f);
+    }
     returnCode = 0;
 
 cleanup:

@@ -50,8 +50,8 @@ pushd ${TMP_DIR}
   for pair in aom,end-usage,cbr avm,end-usage,cbr rav1e,tiles,1 svt,film-grain,0; do
     IFS=','; set -- $pair
     if "${AVIFENC}" --help | grep $1' \['; then
-      "${AVIFENC}" -s 10 -q 85 -c $1 -a foo=1 "${INPUT_Y4M}" "${ENCODED_FILE}" > "${OUT_MSG}" && exit 1
-      "${AVIFENC}" -s 10 -q 85 -c $1 -a $2=$3 "${INPUT_Y4M}" "${ENCODED_FILE}" > "${OUT_MSG}"
+      "${AVIFENC}" -s 10 -q 85 -c $1 -a foo=1 "${INPUT_Y4M}" "${ENCODED_FILE}" 2> "${OUT_MSG}" && exit 1
+      "${AVIFENC}" -s 10 -q 85 -c $1 -a $2=$3 "${INPUT_Y4M}" "${ENCODED_FILE}" 2> "${OUT_MSG}"
     fi
   done
 
@@ -76,6 +76,10 @@ pushd ${TMP_DIR}
   # Passing a filename starting with a dash without using -- should fail.
   "${AVIFENC}" -s 10 "${INPUT_Y4M}" "${ENCODED_FILE_WITH_DASH}" && exit 1
   "${AVIFDEC}" --info "${ENCODED_FILE_WITH_DASH}" && exit 1
+
+  # Encoding to stdout.
+  "${AVIFENC}" -s 10 "${INPUT_Y4M}" --stdout > "${ENCODED_FILE}"
+  "${AVIFDEC}" --info  "${ENCODED_FILE}"
 
   # Option update handling test
   # Passing non-update option before input should not print warning.
@@ -107,17 +111,17 @@ pushd ${TMP_DIR}
   "${AVIFENC}" -s 10 --maxalpha 0 "${INPUT_PNG}" "${ENCODED_FILE}" && exit 1
 
   # The default quality is 60. The default alpha quality is 100 (lossless).
-  "${AVIFENC}" -s 10 "${INPUT_Y4M}" "${ENCODED_FILE}" > "${OUT_MSG}"
+  "${AVIFENC}" -s 10 "${INPUT_Y4M}" "${ENCODED_FILE}" 2> "${OUT_MSG}"
   grep " color quality \[60 " "${OUT_MSG}"
   grep " alpha quality \[60 " "${OUT_MSG}"
-  "${AVIFENC}" -s 10 -q 85 "${INPUT_Y4M}" "${ENCODED_FILE}" > "${OUT_MSG}"
+  "${AVIFENC}" -s 10 -q 85 "${INPUT_Y4M}" "${ENCODED_FILE}" 2> "${OUT_MSG}"
   grep " color quality \[85 " "${OUT_MSG}"
   grep " alpha quality \[85 " "${OUT_MSG}"
   # The average of 15 and 25 is 20. Quantizer 20 maps to quality 68.
-  "${AVIFENC}" -s 10 --min 15 --max 25 "${INPUT_Y4M}" "${ENCODED_FILE}" > "${OUT_MSG}"
+  "${AVIFENC}" -s 10 --min 15 --max 25 "${INPUT_Y4M}" "${ENCODED_FILE}" 2> "${OUT_MSG}"
   grep " color quality \[68 " "${OUT_MSG}"
   grep " alpha quality \[68 " "${OUT_MSG}"
-  "${AVIFENC}" -s 10 -q 65 --min 15 --max 25 "${INPUT_Y4M}" "${ENCODED_FILE}" > "${OUT_MSG}"
+  "${AVIFENC}" -s 10 -q 65 --min 15 --max 25 "${INPUT_Y4M}" "${ENCODED_FILE}" 2> "${OUT_MSG}"
   grep " color quality \[65 " "${OUT_MSG}"
   grep " alpha quality \[65 " "${OUT_MSG}"
 popd
