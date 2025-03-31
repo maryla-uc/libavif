@@ -67,7 +67,7 @@ avifResult WriteAvif(const avifImage* image, avifEncoder* encoder,
                      const std::string& output_filename) {
   avifRWData encoded = AVIF_DATA_EMPTY;
   std::cout << "AVIF to be written:\n";
-  avifImageDump(image,
+  avifImageDump(stdout, image,
                 /*gridCols=*/1,
                 /*gridRows=*/1, AVIF_PROGRESSIVE_STATE_UNAVAILABLE);
   std::cout << "Encoding AVIF at quality " << encoder->quality << " speed "

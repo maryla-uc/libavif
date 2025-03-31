@@ -951,7 +951,7 @@ static avifBool avifJPEGReadInternal(FILE * f,
         // JPEG pixels were successfully copied without conversion. Notify the enduser.
 
         assert(inputFilename); // JPEG read doesn't support stdin
-        printf("Directly copied JPEG pixel data (no YUV conversion): %s\n", inputFilename);
+        fprintf(stderr, "Directly copied JPEG pixel data (no YUV conversion): %s\n", inputFilename);
     } else {
         // JPEG pixels could not be copied without conversion. Request (converted) RGB pixels from
         // libjpeg and convert to YUV with libavif instead.

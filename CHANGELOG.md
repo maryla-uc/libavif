@@ -8,6 +8,11 @@ The changes are relative to the previous release, unless the baseline is specifi
 
 ## [Unreleased]
 
+### Added since 1.2.1
+
+* Add `--stdout` flag to avifenc to output to stdout. Print most messages on
+  stderr instead of stdout in avifenc.
+
 ### Changed since 1.2.1
 
 * Reject the conversion in avifenc from non-monochrome/monochrome to

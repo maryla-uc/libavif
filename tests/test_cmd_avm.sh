@@ -61,17 +61,17 @@ pushd ${TMP_DIR}
   "${AVIFENC}" -c avm -s 10 --maxalpha 0 "${INPUT_PNG}" "${ENCODED_FILE}" && exit 1
 
   # The default quality is 60. The default alpha quality is 100 (lossless).
-  "${AVIFENC}" -c avm -s 10 "${INPUT_PNG}" "${ENCODED_FILE}" > "${OUT_MSG}"
+  "${AVIFENC}" -c avm -s 10 "${INPUT_PNG}" "${ENCODED_FILE}" 2> "${OUT_MSG}"
   grep " color quality \[60 " "${OUT_MSG}"
   grep " alpha quality \[60 " "${OUT_MSG}"
-  "${AVIFENC}" -c avm -s 10 -q 85 "${INPUT_PNG}" "${ENCODED_FILE}" > "${OUT_MSG}"
+  "${AVIFENC}" -c avm -s 10 -q 85 "${INPUT_PNG}" "${ENCODED_FILE}" 2> "${OUT_MSG}"
   grep " color quality \[85 " "${OUT_MSG}"
   grep " alpha quality \[85 " "${OUT_MSG}"
   # The average of 15 and 25 is 20. Quantizer 20 maps to quality 68.
-  "${AVIFENC}" -c avm -s 10 --min 15 --max 25 "${INPUT_PNG}" "${ENCODED_FILE}" > "${OUT_MSG}"
+  "${AVIFENC}" -c avm -s 10 --min 15 --max 25 "${INPUT_PNG}" "${ENCODED_FILE}" 2> "${OUT_MSG}"
   grep " color quality \[68 " "${OUT_MSG}"
   grep " alpha quality \[68 " "${OUT_MSG}"
-  "${AVIFENC}" -c avm -s 10 -q 65 --min 15 --max 25 "${INPUT_PNG}" "${ENCODED_FILE}" > "${OUT_MSG}"
+  "${AVIFENC}" -c avm -s 10 -q 65 --min 15 --max 25 "${INPUT_PNG}" "${ENCODED_FILE}" 2> "${OUT_MSG}"
   grep " color quality \[65 " "${OUT_MSG}"
   grep " alpha quality \[65 " "${OUT_MSG}"
 popd
