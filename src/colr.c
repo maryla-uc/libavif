@@ -205,32 +205,6 @@ struct avifTransferCharacteristicsTable
     avifTransferFunction toGamma;
 };
 
-static float avifToLinear709(float gamma)
-{
-    if (gamma < 0.0f) {
-        return 0.0f;
-    } else if (gamma < 4.5f * 0.018053968510807f) {
-        return gamma / 4.5f;
-    } else if (gamma < 1.0f) {
-        return powf((gamma + 0.09929682680944f) / 1.09929682680944f, 1.0f / 0.45f);
-    } else {
-        return 1.0f;
-    }
-}
-
-static float avifToGamma709(float linear)
-{
-    if (linear < 0.0f) {
-        return 0.0f;
-    } else if (linear < 0.018053968510807f) {
-        return linear * 4.5f;
-    } else if (linear < 1.0f) {
-        return 1.09929682680944f * powf(linear, 0.45f) - 0.09929682680944f;
-    } else {
-        return 1.0f;
-    }
-}
-
 static float avifToLinear470M(float gamma)
 {
     return powf(AVIF_CLAMP(gamma, 0.0f, 1.0f), 2.2f);
@@ -382,6 +356,21 @@ static float avifToGammaSRGB(float linear)
     } else {
         return 1.0f;
     }
+}
+
+static float avifToLinear709(float gamma)
+{
+    // Use the sRGB transfer curve for Rec. 709 as this matches most implementations.
+    // This is different from the OETF defined in the CICP specification (ITU-T H.273)
+    // and also from the EOTF defined in ITU-R BT.1886 (gamma 2.4).
+    // See also Chromium's implementation:
+    // https://source.chromium.org/chromium/chromium/src/+/main:ui/gfx/color_space.cc;l=906;drc=02bc8cc9d9063ac060d33765ecc36f4ca201f84a
+    return avifToLinearSRGB(gamma);
+}
+
+static float avifToGamma709(float linear)
+{
+    return avifToGammaSRGB(linear);
 }
 
 #define PQ_MAX_NITS 10000.0f
