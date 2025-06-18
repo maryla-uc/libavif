@@ -8,11 +8,23 @@ The changes are relative to the previous release, unless the baseline is specifi
 
 ## [Unreleased]
 
+### Added since 1.3.0
+
+* Allow avifenc to read png or jpeg files through stdin using --stdin-format.
+
 ### Changed since 1.3.0
 
 * Set avifDecoder::image->depth to the same value after avifDecoderParse() as
   after avifDecoderNextImage() when AVIF_ENABLE_EXPERIMENTAL_SAMPLE_TRANSFORM is
   enabled and when the file to decode contains a 'sato' derived image item.
+* Update googletest.cmd/LocalGTest.cmake: v1.17.0
+* Update rav1e.cmd/LocalRav1e.cmake: cargo-c v0.10.13, corrosion v0.5.2,
+  rav1e v0.8.0
+* Fix grayscale conversion when changing the bit depth.
+
+### Removed since 1.3.0
+
+* Remove ext/avm.cmd.
 
 ## [1.3.0] - 2025-05-09
 
