@@ -44,7 +44,7 @@ TEST_P(AvmTest, EncodeDecode) {
             AVIF_RESULT_OK);
 
   // Verify that the input and decoded images are close.
-  EXPECT_GT(testutil::GetPsnr(*image, *decoded), 36.6);
+  EXPECT_GT(testutil::GetPsnr(*image, *decoded), 37.0);
 
   // Forcing an AV1 decoding codec should fail.
   for (avifCodecChoice av1_codec :
@@ -75,10 +75,6 @@ INSTANTIATE_TEST_SUITE_P(Tiny, AvmTest,
                                  Values(AVIF_PIXEL_FORMAT_YUV444),
                                  /*alpha=*/Values(false)));
 
-// The width in this test was originally 2 and that detected
-// https://gitlab.com/AOMediaCodec/avm/-/issues/717. 5 is the smallest width
-// that allows this test to pass. To reproduce the bug, decrease width to 4, 3,
-// or 2.
 INSTANTIATE_TEST_SUITE_P(HighBitDepthAndEvenDimensions, AvmTest,
                          Combine(/*width=*/Values(5), /*height=*/Values(34),
                                  /*depth=*/Values(10, 12),
