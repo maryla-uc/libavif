@@ -854,20 +854,28 @@ static avifResult aomCodecEncodeImage(avifCodec * codec,
             // CICP values could be set to 2/2/2 (Unspecified) in the Sequence Header OBU for
             // simplicity and to save 3 bytes, but some decoders ignore the colr box and rely
             // on the OBU contents instead. See #2850.
+            avifBool setCicp = AVIF_TRUE;
+#if defined(AVIF_ENABLE_EXPERIMENTAL_MINI)
+            // AVIF_HEADER_MINI is a new container format so there is no need for backward
+            // compatibility, and we can omit the CICP.
+            setCicp = (encoder->headerFormat & AVIF_HEADER_MINI) == 0;
+#endif
             // libaom's defaults are AOM_CICP_CP_UNSPECIFIED, AOM_CICP_TC_UNSPECIFIED,
             // AOM_CICP_MC_UNSPECIFIED, AOM_CSP_UNKNOWN, and 0 (studio/limited range). Call
             // aom_codec_control() only if the values are not the defaults.
-            if (image->colorPrimaries != AVIF_COLOR_PRIMARIES_UNSPECIFIED) {
-                aom_codec_control(&codec->internal->encoder, AV1E_SET_COLOR_PRIMARIES, (int)image->colorPrimaries);
-            }
-            if (image->transferCharacteristics != AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED) {
-                aom_codec_control(&codec->internal->encoder, AV1E_SET_TRANSFER_CHARACTERISTICS, (int)image->transferCharacteristics);
-            }
-            if (image->matrixCoefficients != AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED) {
-                aom_codec_control(&codec->internal->encoder, AV1E_SET_MATRIX_COEFFICIENTS, (int)image->matrixCoefficients);
-            }
-            if (image->yuvChromaSamplePosition != AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN) {
-                aom_codec_control(&codec->internal->encoder, AV1E_SET_CHROMA_SAMPLE_POSITION, (int)image->yuvChromaSamplePosition);
+            if (setCicp) {
+                if (image->colorPrimaries != AVIF_COLOR_PRIMARIES_UNSPECIFIED) {
+                    aom_codec_control(&codec->internal->encoder, AV1E_SET_COLOR_PRIMARIES, (int)image->colorPrimaries);
+                }
+                if (image->transferCharacteristics != AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED) {
+                    aom_codec_control(&codec->internal->encoder, AV1E_SET_TRANSFER_CHARACTERISTICS, (int)image->transferCharacteristics);
+                }
+                if (image->matrixCoefficients != AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED) {
+                    aom_codec_control(&codec->internal->encoder, AV1E_SET_MATRIX_COEFFICIENTS, (int)image->matrixCoefficients);
+                }
+                if (image->yuvChromaSamplePosition != AVIF_CHROMA_SAMPLE_POSITION_UNKNOWN) {
+                    aom_codec_control(&codec->internal->encoder, AV1E_SET_CHROMA_SAMPLE_POSITION, (int)image->yuvChromaSamplePosition);
+                }
             }
 
             // AV1-ISOBMFF specification, Section 2.3.4:

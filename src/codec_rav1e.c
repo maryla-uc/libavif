@@ -208,10 +208,18 @@ static avifResult rav1eCodecEncodeImage(avifCodec * codec,
         // CICP values could be set to 2/2/2 (Unspecified) in the Sequence Header OBU for
         // simplicity and to save 3 bytes, but some decoders ignore the colr box and rely
         // on the OBU contents instead. See #2850.
-        rav1e_config_set_color_description(rav1eConfig,
-                                           (RaMatrixCoefficients)image->matrixCoefficients,
-                                           (RaColorPrimaries)image->colorPrimaries,
-                                           (RaTransferCharacteristics)image->transferCharacteristics);
+        avifBool setCicp = AVIF_TRUE;
+#if defined(AVIF_ENABLE_EXPERIMENTAL_MINI)
+        // AVIF_HEADER_MINI is a new container format so there is no need for backward
+        // compatibility, and we can omit the CICP.
+        setCicp = (encoder->headerFormat & AVIF_HEADER_MINI) == 0;
+#endif
+        if (setCicp) {
+            rav1e_config_set_color_description(rav1eConfig,
+                                               (RaMatrixCoefficients)image->matrixCoefficients,
+                                               (RaColorPrimaries)image->colorPrimaries,
+                                               (RaTransferCharacteristics)image->transferCharacteristics);
+        }
 
         codec->internal->rav1eContext = rav1e_context_new(rav1eConfig);
         if (!codec->internal->rav1eContext) {

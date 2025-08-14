@@ -148,9 +148,21 @@ static avifResult svtCodecEncodeImage(avifCodec * codec,
         // CICP values could be set to 2/2/2 (Unspecified) in the Sequence Header OBU for
         // simplicity and to save 3 bytes, but some decoders ignore the colr box and rely
         // on the OBU contents instead. See #2850.
-        svt_config->color_primaries = (EbColorPrimaries)image->colorPrimaries;
-        svt_config->transfer_characteristics = (EbTransferCharacteristics)image->transferCharacteristics;
-        svt_config->matrix_coefficients = (EbMatrixCoefficients)image->matrixCoefficients;
+        avifBool setCicp = AVIF_TRUE;
+#if defined(AVIF_ENABLE_EXPERIMENTAL_MINI)
+        // AVIF_HEADER_MINI is a new container format so there is no need for backward
+        // compatibility, and we can omit the CICP.
+        setCicp = (encoder->headerFormat & AVIF_HEADER_MINI) == 0;
+#endif
+        if (setCicp) {
+            svt_config->color_primaries = (EbColorPrimaries)image->colorPrimaries;
+            svt_config->transfer_characteristics = (EbTransferCharacteristics)image->transferCharacteristics;
+            svt_config->matrix_coefficients = (EbMatrixCoefficients)image->matrixCoefficients;
+        } else {
+            svt_config->color_primaries = EB_CICP_CP_UNSPECIFIED;
+            svt_config->transfer_characteristics = EB_CICP_TC_UNSPECIFIED;
+            svt_config->matrix_coefficients = EB_CICP_MC_UNSPECIFIED;
+        }
 
         svt_config->color_range = svt_range;
 #if !SVT_AV1_CHECK_VERSION(0, 9, 0)
