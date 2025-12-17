@@ -2612,6 +2612,20 @@ int main(int argc, char * argv[])
             if (!avifImageSplitGrid(gridSplitImage, settings.gridDims[0], settings.gridDims[1], gridCells)) {
                 goto cleanup;
             }
+
+            // Metadata is not copied by avifImageSplitGrid (which uses avifImageSetViewRect).
+            // However, avifEncoderAddImageGrid() expects the first cell to contain the metadata
+            // to be written to the output file.
+            avifImage * firstCell = gridCells[0];
+            if (gridSplitImage->icc.size > 0) {
+                avifImageSetProfileICC(firstCell, gridSplitImage->icc.data, gridSplitImage->icc.size);
+            }
+            if (gridSplitImage->exif.size > 0) {
+                avifImageSetMetadataExif(firstCell, gridSplitImage->exif.data, gridSplitImage->exif.size);
+            }
+            if (gridSplitImage->xmp.size > 0) {
+                avifImageSetMetadataXMP(firstCell, gridSplitImage->xmp.data, gridSplitImage->xmp.size);
+            }
         } else if (imageIndex != (int)gridCellCount) {
             fprintf(stderr, "ERROR: Not enough input files for grid image! (expecting %u, or a single image to be split)\n", gridCellCount);
             goto cleanup;
