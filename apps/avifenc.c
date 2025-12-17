@@ -854,6 +854,8 @@ static avifBool avifImageSplitGrid(const avifImage * gridSplitImage, uint32_t gr
     }
 
     // Metadata is not copied by avifImageSetViewRect() (which calls avifImageCopyNoAlloc()).
+    // We copy metadata to the first cell because the first cell is used to populate
+    // the AVIF container metadata in avifEncoderAddImageInternal().
     // However, avifEncoderAddImageGrid() expects the first cell to contain the metadata
     // to be written to the output file.
     avifImage * firstCell = gridCells[0];
