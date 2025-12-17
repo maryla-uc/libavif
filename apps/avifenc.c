@@ -852,6 +852,33 @@ static avifBool avifImageSplitGrid(const avifImage * gridSplitImage, uint32_t gr
             }
         }
     }
+
+    // Metadata is not copied by avifImageSplitGrid (which uses avifImageSetViewRect).
+    // However, avifEncoderAddImageGrid() expects the first cell to contain the metadata
+    // to be written to the output file.
+    avifImage * firstCell = gridCells[0];
+    if (gridSplitImage->icc.size > 0) {
+        const avifResult result = avifImageSetProfileICC(firstCell, gridSplitImage->icc.data, gridSplitImage->icc.size);
+        if (result != AVIF_RESULT_OK) {
+            fprintf(stderr, "ERROR: Failed to set ICC profile on grid cell: %s\n", avifResultToString(result));
+            return AVIF_FALSE;
+        }
+    }
+    if (gridSplitImage->exif.size > 0) {
+        const avifResult result =
+            avifImageSetMetadataExif(firstCell, gridSplitImage->exif.data, gridSplitImage->exif.size);
+        if (result != AVIF_RESULT_OK) {
+            fprintf(stderr, "ERROR: Failed to set Exif metadata on grid cell: %s\n", avifResultToString(result));
+            return AVIF_FALSE;
+        }
+    }
+    if (gridSplitImage->xmp.size > 0) {
+        const avifResult result = avifImageSetMetadataXMP(firstCell, gridSplitImage->xmp.data, gridSplitImage->xmp.size);
+        if (result != AVIF_RESULT_OK) {
+            fprintf(stderr, "ERROR: Failed to set XMP metadata on grid cell: %s\n", avifResultToString(result));
+            return AVIF_FALSE;
+        }
+    }
     return AVIF_TRUE;
 }
 
@@ -2611,33 +2638,6 @@ int main(int argc, char * argv[])
 
             if (!avifImageSplitGrid(gridSplitImage, settings.gridDims[0], settings.gridDims[1], gridCells)) {
                 goto cleanup;
-            }
-
-            // Metadata is not copied by avifImageSplitGrid (which uses avifImageSetViewRect).
-            // However, avifEncoderAddImageGrid() expects the first cell to contain the metadata
-            // to be written to the output file.
-            avifImage * firstCell = gridCells[0];
-            if (gridSplitImage->icc.size > 0) {
-                const avifResult result = avifImageSetProfileICC(firstCell, gridSplitImage->icc.data, gridSplitImage->icc.size);
-                if (result != AVIF_RESULT_OK) {
-                    fprintf(stderr, "ERROR: Failed to set ICC profile on grid cell: %s\n", avifResultToString(result));
-                    goto cleanup;
-                }
-            }
-            if (gridSplitImage->exif.size > 0) {
-                const avifResult result =
-                    avifImageSetMetadataExif(firstCell, gridSplitImage->exif.data, gridSplitImage->exif.size);
-                if (result != AVIF_RESULT_OK) {
-                    fprintf(stderr, "ERROR: Failed to set Exif metadata on grid cell: %s\n", avifResultToString(result));
-                    goto cleanup;
-                }
-            }
-            if (gridSplitImage->xmp.size > 0) {
-                const avifResult result = avifImageSetMetadataXMP(firstCell, gridSplitImage->xmp.data, gridSplitImage->xmp.size);
-                if (result != AVIF_RESULT_OK) {
-                    fprintf(stderr, "ERROR: Failed to set XMP metadata on grid cell: %s\n", avifResultToString(result));
-                    goto cleanup;
-                }
             }
         } else if (imageIndex != (int)gridCellCount) {
             fprintf(stderr, "ERROR: Not enough input files for grid image! (expecting %u, or a single image to be split)\n", gridCellCount);
