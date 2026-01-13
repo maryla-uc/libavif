@@ -13,6 +13,7 @@ class ConvertCommand : public ProgramCommand {
  public:
   ConvertCommand();
   avifResult Run() override;
+  avifResult PostParse() override;
 
  private:
   argparse::ArgValue<std::string> arg_input_filename_;
@@ -25,6 +26,7 @@ class ConvertCommand : public ProgramCommand {
   argparse::ArgValue<int> arg_gain_map_pixel_format_;
   BasicImageEncodeArgs arg_image_encode_;
   ImageReadArgs arg_image_read_;
+  GridOptions arg_grid_;
 };
 
 }  // namespace avif

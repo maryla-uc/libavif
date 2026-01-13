@@ -30,7 +30,10 @@ ConvertCommand::ConvertCommand()
           "M = matrix coefficients.");
   arg_image_encode_.Init(argparse_, /*can_have_alpha=*/false);
   arg_image_read_.Init(argparse_);
+  arg_grid_.Init(argparse_);
 }
+
+avifResult ConvertCommand::PostParse() { return arg_grid_.Parse(); }
 
 avifResult ConvertCommand::Run() {
 #if !defined(AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION)
@@ -119,8 +122,9 @@ avifResult ConvertCommand::Run() {
   encoder->qualityAlpha = arg_image_encode_.quality_alpha;
   encoder->qualityGainMap = arg_gain_map_quality_;
   encoder->speed = arg_image_encode_.speed;
-  const avifResult result =
-      WriteAvif(image.get(), encoder.get(), arg_output_filename_);
+  const avifResult result = WriteImageGrid(
+      image.get(), encoder.get(), arg_output_filename_, arg_grid_.grid_cols,
+      arg_grid_.grid_rows);
   if (result != AVIF_RESULT_OK) {
     std::cout << "Failed to encode image: " << avifResultToString(result)
               << " (" << encoder->diag.error << ")\n";

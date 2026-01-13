@@ -13,6 +13,7 @@ class CombineCommand : public ProgramCommand {
  public:
   CombineCommand();
   avifResult Run() override;
+  avifResult PostParse() override;
 
  private:
   argparse::ArgValue<std::string> arg_base_filename_;
@@ -27,6 +28,7 @@ class CombineCommand : public ProgramCommand {
   argparse::ArgValue<float> arg_max_headroom_;
   BasicImageEncodeArgs arg_image_encode_;
   ImageReadArgs arg_image_read_;
+  GridOptions arg_grid_;
 };
 
 }  // namespace avif

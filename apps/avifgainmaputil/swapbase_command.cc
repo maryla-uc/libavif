@@ -138,7 +138,10 @@ SwapBaseCommand::SwapBaseCommand()
           " expressed as P/T/M where P = color primaries, T = transfer "
           "characteristics, M = matrix coefficients. This will become the CICP "
           "of the base image after swapping.");
+  arg_grid_.Init(argparse_);
 }
+
+avifResult SwapBaseCommand::PostParse() { return arg_grid_.Parse(); }
 
 avifResult SwapBaseCommand::Run() {
   DecoderPtr decoder(avifDecoderCreate());
@@ -206,7 +209,8 @@ avifResult SwapBaseCommand::Run() {
   encoder->qualityAlpha = arg_image_encode_.quality_alpha;
   encoder->qualityGainMap = arg_gain_map_quality_;
   encoder->speed = arg_image_encode_.speed;
-  result = WriteAvif(new_base.get(), encoder.get(), arg_output_filename_);
+  result = WriteImageGrid(new_base.get(), encoder.get(), arg_output_filename_,
+                          arg_grid_.grid_cols, arg_grid_.grid_rows);
   if (result != AVIF_RESULT_OK) {
     std::cout << "Failed to encode image: " << avifResultToString(result)
               << " (" << encoder->diag.error << ")\n";

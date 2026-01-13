@@ -1,6 +1,30 @@
 #include "program_command.h"
 
+#include <sstream>
+#include <vector>
+
 namespace avif {
+
+void GridOptions::Init(argparse::ArgumentParser& argparse) {
+  argparse.add_argument(arg_grid, "--grid")
+      .help(
+          "Encode a single-image grid AVIF with M cols & N rows, in the format "
+          "'MxN'. The input image will be split into an MxN grid of cells, "
+          "and the grid will adopt the color profile of the input image.")
+      .default_value("1x1");
+}
+
+avifResult GridOptions::Parse() {
+  std::vector<int> grid_dims;
+  if (!ParseList(arg_grid.value(), 'x', 2, &grid_dims) || grid_dims[0] <= 0 ||
+      grid_dims[1] <= 0) {
+    std::cerr << "Invalid grid dimensions: " << arg_grid.value() << "\n";
+    return AVIF_RESULT_INVALID_ARGUMENT;
+  }
+  grid_cols = grid_dims[0];
+  grid_rows = grid_dims[1];
+  return AVIF_RESULT_OK;
+}
 
 ProgramCommand::ProgramCommand(const std::string& name,
                                const std::string& short_description,
@@ -14,8 +38,10 @@ ProgramCommand::ProgramCommand(const std::string& name,
 // Parses command line arguments. Should be called before Run().
 avifResult ProgramCommand::ParseArgs(int argc, const char* const argv[]) {
   argparse_.parse_args(argc, argv);
-  return AVIF_RESULT_OK;
+  return PostParse();
 }
+
+avifResult ProgramCommand::PostParse() { return AVIF_RESULT_OK; }
 
 // Prints this command's help on stdout.
 void ProgramCommand::PrintUsage() { argparse_.print_help(); }

@@ -13,6 +13,7 @@ class TonemapCommand : public ProgramCommand {
  public:
   TonemapCommand();
   avifResult Run() override;
+  avifResult PostParse() override;
 
  private:
   argparse::ArgValue<std::string> arg_input_filename_;
@@ -23,6 +24,7 @@ class TonemapCommand : public ProgramCommand {
   argparse::ArgValue<CicpValues> arg_output_cicp_;
   ImageReadArgs arg_image_read_;
   BasicImageEncodeArgs arg_image_encode_;
+  GridOptions arg_grid_;
 };
 
 }  // namespace avif

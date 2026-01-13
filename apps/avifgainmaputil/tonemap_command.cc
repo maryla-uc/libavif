@@ -48,7 +48,10 @@ TonemapCommand::TonemapCommand()
           "MaxCLL,MaxPALL. Only relevant when saving to AVIF.");
   arg_image_read_.Init(argparse_);
   arg_image_encode_.Init(argparse_, /*can_have_alpha=*/true);
+  arg_grid_.Init(argparse_);
 }
+
+avifResult TonemapCommand::PostParse() { return arg_grid_.Parse(); }
 
 avifResult TonemapCommand::Run() {
   avifContentLightLevelInformationBox clli_box = {};
@@ -215,8 +218,15 @@ avifResult TonemapCommand::Run() {
   tone_mapped->colorPrimaries = cicp.color_primaries;
   tone_mapped->matrixCoefficients = cicp.matrix_coefficients;
 
-  return WriteImage(tone_mapped.get(), arg_output_filename_,
-                    arg_image_encode_.quality, arg_image_encode_.speed);
+  EncoderPtr encoder(avifEncoderCreate());
+  if (encoder == nullptr) {
+    return AVIF_RESULT_OUT_OF_MEMORY;
+  }
+  encoder->quality = arg_image_encode_.quality;
+  encoder->qualityAlpha = arg_image_encode_.quality_alpha;
+  encoder->speed = arg_image_encode_.speed;
+  return WriteImageGrid(tone_mapped.get(), encoder.get(), arg_output_filename_,
+                        arg_grid_.grid_cols, arg_grid_.grid_rows);
 }
 
 }  // namespace avif

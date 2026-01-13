@@ -9,13 +9,27 @@
 #include "argparse.hpp"
 #include "avif/avif.h"
 
+#include "avif/avif.h"
+
 namespace avif {
+
+// Helper to parse --grid MxN arguments.
+class AVIF_API GridOptions {
+ public:
+  void Init(argparse::ArgumentParser& argparse);
+  avifResult Parse();
+
+  // Members are public for convenience.
+  argparse::ArgValue<std::string> arg_grid;
+  int grid_cols = 0;
+  int grid_rows = 0;
+};
 
 // A command that can be invoked by name (similar to how 'git' has commands like
 // 'commit', 'checkout', etc.)
 // NOTE: "avifgainmaputil" is currently hardcoded in the implementation (for
 // help messages).
-class ProgramCommand {
+class AVIF_API ProgramCommand {
  public:
   // 'name' is the command that should be used to invoke the command on the
   // command line.
@@ -28,6 +42,7 @@ class ProgramCommand {
 
   // Parses command line arguments. Should be called before Run().
   avifResult ParseArgs(int argc, const char* const argv[]);
+  virtual avifResult PostParse();
 
   // Runs the command.
   virtual avifResult Run() = 0;

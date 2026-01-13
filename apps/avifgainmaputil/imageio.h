@@ -28,6 +28,13 @@ avifResult WriteAvif(const avifImage* image, avifEncoder* encoder,
 avifResult ReadAvif(avifDecoder* decoder, const std::string& input_filename,
                     bool ignore_profile);
 
+// Splits 'image' into a grid if grid_cols*grid_rows > 1 and writes it to an
+// AVIF file. Otherwise, just writes a single AVIF image.
+AVIF_API avifResult WriteImageGrid(const avifImage* image,
+                                   avifEncoder* encoder,
+                                   const std::string& filename, int grid_cols,
+                                   int grid_rows);
+
 }  // namespace avif
 
 #endif  // LIBAVIF_APPS_AVIFGAINMAPUTIL_IMAGEIO_H_

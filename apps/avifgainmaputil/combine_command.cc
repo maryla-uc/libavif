@@ -63,7 +63,10 @@ CombineCommand::CombineCommand()
           "M = matrix coefficients.");
   arg_image_encode_.Init(argparse_, /*can_have_alpha=*/true);
   arg_image_read_.Init(argparse_);
+  arg_grid_.Init(argparse_);
 }
+
+avifResult CombineCommand::PostParse() { return arg_grid_.Parse(); }
 
 avifResult CombineCommand::Run() {
   const avifPixelFormat pixel_format =
@@ -165,7 +168,8 @@ avifResult CombineCommand::Run() {
   encoder->qualityAlpha = arg_image_encode_.quality_alpha;
   encoder->qualityGainMap = arg_gain_map_quality_;
   encoder->speed = arg_image_encode_.speed;
-  result = WriteAvif(base_image.get(), encoder.get(), arg_output_filename_);
+  result = WriteImageGrid(base_image.get(), encoder.get(), arg_output_filename_,
+                          arg_grid_.grid_cols, arg_grid_.grid_rows);
   if (result != AVIF_RESULT_OK) {
     std::cout << "Failed to encode image: " << avifResultToString(result)
               << " (" << encoder->diag.error << ")\n";
