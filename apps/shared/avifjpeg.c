@@ -237,7 +237,7 @@ static avifBool avifJPEGReadCopy(avifImage * avif, uint32_t sizeLimit, struct jp
 }
 
 // Reads a 4-byte unsigned integer in big-endian format from the raw bitstream src.
-static uint32_t avifJPEGReadUint32BigEndian(const uint8_t * src)
+AVIF_NODISCARD static uint32_t avifJPEGReadUint32BigEndian(const uint8_t * src)
 {
     return ((uint32_t)src[0] << 24) | ((uint32_t)src[1] << 16) | ((uint32_t)src[2] << 8) | ((uint32_t)src[3] << 0);
 }
@@ -290,25 +290,25 @@ static const uint8_t * avifJPEGFindSubstr(const uint8_t * str, size_t strLength,
 #if defined(AVIF_ENABLE_JPEG_GAIN_MAP_CONVERSION)
 
 // Reads a 4-byte unsigned integer in little-endian format from the raw bitstream src.
-static uint32_t avifJPEGReadUint32LittleEndian(const uint8_t * src)
+AVIF_NODISCARD static uint32_t avifJPEGReadUint32LittleEndian(const uint8_t * src)
 {
     return ((uint32_t)src[0] << 0) | ((uint32_t)src[1] << 8) | ((uint32_t)src[2] << 16) | ((uint32_t)src[3] << 24);
 }
 
 // Reads a 2-byte unsigned integer in big-endian format from the raw bitstream src.
-static uint16_t avifJPEGReadUint16BigEndian(const uint8_t * src)
+AVIF_NODISCARD static uint16_t avifJPEGReadUint16BigEndian(const uint8_t * src)
 {
     return (uint16_t)((src[0] << 8) | (src[1] << 0));
 }
 
 // Reads a 2-byte unsigned integer in little-endian format from the raw bitstream src.
-static uint16_t avifJPEGReadUint16LittleEndian(const uint8_t * src)
+AVIF_NODISCARD static uint16_t avifJPEGReadUint16LittleEndian(const uint8_t * src)
 {
     return (uint16_t)((src[0] << 0) | (src[1] << 8));
 }
 
 // Reads 'numBytes' at 'offset', stores them in 'bytes' and increases 'offset'.
-static avifBool avifJPEGReadBytes(const avifROData * data, uint8_t * bytes, uint32_t * offset, uint32_t numBytes)
+AVIF_NODISCARD static avifBool avifJPEGReadBytes(const avifROData * data, uint8_t * bytes, uint32_t * offset, uint32_t numBytes)
 {
     if ((UINT32_MAX - *offset) < numBytes || data->size < (*offset + numBytes)) {
         return AVIF_FALSE;
@@ -318,7 +318,7 @@ static avifBool avifJPEGReadBytes(const avifROData * data, uint8_t * bytes, uint
     return AVIF_TRUE;
 }
 
-static avifBool avifJPEGReadU32(const avifROData * data, uint32_t * v, uint32_t * offset, avifBool isBigEndian)
+AVIF_NODISCARD static avifBool avifJPEGReadU32(const avifROData * data, uint32_t * v, uint32_t * offset, avifBool isBigEndian)
 {
     uint8_t bytes[4];
     AVIF_CHECK(avifJPEGReadBytes(data, bytes, offset, 4));
@@ -326,7 +326,7 @@ static avifBool avifJPEGReadU32(const avifROData * data, uint32_t * v, uint32_t 
     return AVIF_TRUE;
 }
 
-static avifBool avifJPEGReadU16(const avifROData * data, uint16_t * v, uint32_t * offset, avifBool isBigEndian)
+AVIF_NODISCARD static avifBool avifJPEGReadU16(const avifROData * data, uint16_t * v, uint32_t * offset, avifBool isBigEndian)
 {
     uint8_t bytes[2];
     AVIF_CHECK(avifJPEGReadBytes(data, bytes, offset, 2));
